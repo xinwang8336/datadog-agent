@@ -32,10 +32,10 @@ type EventHandler interface {
 	HandleEvent(event *Event)
 }
 
-// Discarder represents a discarder whose a value for a field that
+// Discarder represents a discarder which is basically the field that we know for sure
+// that the value will be always rejected by the rules
 type Discarder struct {
 	Field eval.Field
-	Value interface{}
 }
 
 type onApproversFnc func(probe *Probe, approvers rules.Approvers) error
@@ -50,15 +50,16 @@ var (
 // setting up the required kProbes and decoding events sent from the kernel
 type Probe struct {
 	*ebpf.Probe
-	config           *config.Config
-	handler          EventHandler
-	resolvers        *Resolvers
-	onDiscardersFncs map[eval.EventType][]onDiscarderFnc
-	tables           map[string]*ebpf.Table
-	syscallMonitor   *SyscallMonitor
-	kernelVersion    uint32
-	_                uint32 // padding for goarch=386
-	eventsStats      EventsStats
+	config            *config.Config
+	handler           EventHandler
+	resolvers         *Resolvers
+	onDiscardersFncs  map[eval.EventType][]onDiscarderFnc
+	tables            map[string]*ebpf.Table
+	syscallMonitor    *SyscallMonitor
+	kernelVersion     uint32
+	_                 uint32 // padding for goarch=386
+	eventsStats       EventsStats
+	invalidDiscarders map[eval.Field]map[interface{}]bool
 }
 
 func (p *Probe) getTableNames() []string {
@@ -369,14 +370,8 @@ func (p *Probe) OnNewDiscarder(rs *rules.RuleSet, event *Event, field eval.Field
 	}
 
 	for _, fnc := range p.onDiscardersFncs[eventType] {
-		value, err := event.GetFieldValue(field)
-		if err != nil {
-			return err
-		}
-
 		discarder := Discarder{
 			Field: field,
-			Value: value,
 		}
 
 		if err = fnc(rs, event, p, discarder); err != nil {
@@ -455,12 +450,43 @@ func (p *Probe) Snapshot() error {
 	return p.resolvers.Snapshot(5)
 }
 
+// IsInvalidDiscarder returns whether the given value is a valid discarder for the given field
+func (p *Probe) IsInvalidDiscarder(field eval.Field, value interface{}) bool {
+	values, exists := p.invalidDiscarders[field]
+	if !exists {
+		return false
+	}
+
+	return values[value]
+}
+
+// rearrange invalid discarders for fast lookup
+func getInvalidDiscarders() map[eval.Field]map[interface{}]bool {
+	invalidDiscarders := make(map[eval.Field]map[interface{}]bool)
+
+	if InvalidDiscarders != nil {
+		for field, values := range InvalidDiscarders {
+			ivalues := invalidDiscarders[field]
+			if ivalues == nil {
+				ivalues = make(map[interface{}]bool)
+				invalidDiscarders[field] = ivalues
+			}
+			for _, value := range values {
+				ivalues[value] = true
+			}
+		}
+	}
+
+	return invalidDiscarders
+}
+
 // NewProbe instantiates a new runtime security agent probe
 func NewProbe(config *config.Config) (*Probe, error) {
 	p := &Probe{
-		config:           config,
-		onDiscardersFncs: make(map[eval.EventType][]onDiscarderFnc),
-		tables:           make(map[string]*ebpf.Table),
+		config:            config,
+		onDiscardersFncs:  make(map[eval.EventType][]onDiscarderFnc),
+		tables:            make(map[string]*ebpf.Table),
+		invalidDiscarders: getInvalidDiscarders(),
 	}
 
 	p.Probe = &ebpf.Probe{

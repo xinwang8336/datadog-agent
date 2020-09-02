@@ -146,7 +146,7 @@ func (e *FileEvent) ResolveInode(resolvers *Resolvers) string {
 
 		_, mountPath, rootPath, err := resolvers.MountResolver.GetMountPath(e.MountID)
 		if err == nil {
-			if strings.HasPrefix(e.PathnameStr, rootPath) && rootPath != "/" {
+			if strings.HasPrefix(e.PathnameStr, rootPath) && rootPath != PathSeparator {
 				e.PathnameStr = strings.Replace(e.PathnameStr, rootPath, "", 1)
 			}
 			e.PathnameStr = path.Join(mountPath, e.PathnameStr)

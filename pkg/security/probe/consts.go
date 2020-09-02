@@ -9,6 +9,7 @@ package probe
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"syscall"
@@ -21,6 +22,9 @@ const (
 	// KERNEL_VERSION(a,b,c) = (a << 16) + (b << 8) + (c)
 	kernel4_13 = (4 << 16) + (13 << 8) //nolint:deadcode,unused
 )
+
+// PathSeparator is os specific path separator
+var PathSeparator = string(os.PathSeparator)
 
 // EventType describes the type of an event sent from the kernel
 type EventType uint64

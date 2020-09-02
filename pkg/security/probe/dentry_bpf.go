@@ -18,6 +18,9 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/security/ebpf"
 )
+import (
+	"os"
+)
 
 // DentryResolver resolves inode/mountID to full paths
 type DentryResolver struct {
@@ -126,8 +129,8 @@ func (dr *DentryResolver) resolve(mountID uint32, inode uint64) (filename string
 		}
 
 		// Don't append dentry name if this is the root dentry (i.d. name == '/')
-		if path.name[0] != '\x00' && path.name[0] != '/' {
-			filename = "/" + C.GoString((*C.char)(unsafe.Pointer(&path.name))) + filename
+		if path.name[0] != '\x00' && path.name[0] != os.PathSeparator {
+			filename = PathSeparator + C.GoString((*C.char)(unsafe.Pointer(&path.name))) + filename
 		}
 
 		if path.parent.inode == 0 {
@@ -139,8 +142,10 @@ func (dr *DentryResolver) resolve(mountID uint32, inode uint64) (filename string
 	}
 
 	if len(filename) == 0 {
-		filename = "/"
+		filename = PathSeparator
 	}
+
+	//fmt.Printf(">>>>>>>>>>>>>>>> :%s \n %v\n", filename, string(debug.Stack()))
 
 	return
 }
