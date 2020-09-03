@@ -100,6 +100,11 @@ func (p *Probe) getPerfMaps() []*ebpf.PerfMapDefinition {
 			Handler:     p.handleEvent,
 			LostHandler: p.handleLostEvents,
 		},
+		{
+			Name:        "process_events",
+			Handler:     p.handleEvent,
+			LostHandler: p.handleLostEvents,
+		},
 	}
 }
 
@@ -344,6 +349,14 @@ func (p *Probe) handleEvent(data []byte) {
 			log.Errorf("failed to decode removexattr event: %s (offset %d, len %d)", err, offset, len(data))
 			return
 		}
+	case ExecEventType:
+		if _, err := event.Exec.UnmarshalBinary(data[offset:]); err != nil {
+			log.Errorf("failed to decode umount event: %s (offset %d, len %d)", err, offset, len(data))
+			return
+		}
+
+		fmt.Printf("TTTTTTTTTTTTTTTTTTTTTT : %v\n", event.Exec)
+
 	default:
 		log.Errorf("unsupported event type %d", eventType)
 		return
