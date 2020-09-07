@@ -13,13 +13,11 @@ import (
 	"encoding/binary"
 	"fmt"
 	"unsafe"
+	"os"
 
 	"github.com/pkg/errors"
 
 	"github.com/DataDog/datadog-agent/pkg/security/ebpf"
-)
-import (
-	"os"
 )
 
 // DentryResolver resolves inode/mountID to full paths
