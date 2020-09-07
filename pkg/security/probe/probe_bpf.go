@@ -422,7 +422,8 @@ func (p *Probe) handleEvent(data []byte) {
 				Filename: filename,
 			}
 
-			p.resolvers.ProcessResolver.AddEntry(event.Exec.Pid, &entry)
+			_ = entry
+			//p.resolvers.ProcessResolver.AddEntry(event.Exec.Pid, &entry)
 		}
 	case ExitEventType:
 		if _, err := event.Exit.UnmarshalBinary(data[offset:]); err != nil {
@@ -535,7 +536,7 @@ func (p *Probe) RegisterTracepoint(tracepoint string) error {
 // Snapshot runs the different snapshot functions of the resolvers that
 // require to sync with the current state of the system
 func (p *Probe) Snapshot() error {
-	return p.resolvers.Snapshot(5)
+	return p.resolvers.Snapshot()
 }
 
 // IsInvalidDiscarder returns whether the given value is a valid discarder for the given field

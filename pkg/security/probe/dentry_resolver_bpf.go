@@ -12,8 +12,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"unsafe"
 	"os"
+	"unsafe"
 
 	"github.com/pkg/errors"
 
@@ -142,8 +142,6 @@ func (dr *DentryResolver) resolve(mountID uint32, inode uint64) (filename string
 	if len(filename) == 0 {
 		filename = PathSeparator
 	}
-
-	//fmt.Printf(">>>>>>>>>>>>>>>> :%s \n %v\n", filename, string(debug.Stack()))
 
 	return
 }
