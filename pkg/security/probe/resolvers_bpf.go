@@ -32,5 +32,5 @@ func (r *Resolvers) Start() error {
 
 // Snapshot collects data on the current state of the system to populate user space and kernel space caches.
 func (r *Resolvers) Snapshot() error {
-	return r.ProcessResolver.Snapshot(r.ContainerResolver, r.MountResolver)
+	return r.ProcessResolver.Snapshot()
 }

@@ -100,11 +100,6 @@ func (p *Probe) getPerfMaps() []*ebpf.PerfMapDefinition {
 			Handler:     p.handleEvent,
 			LostHandler: p.handleLostEvents,
 		},
-		{
-			Name:        "process_events",
-			Handler:     p.handleEvent,
-			LostHandler: p.handleLostEvents,
-		},
 	}
 }
 
@@ -417,13 +412,13 @@ func (p *Probe) handleEvent(data []byte) {
 			log.Errorf("failed to decode exec event: %s (offset %d, len %d)", err, offset, len(data))
 			return
 		}
-		if filename := event.Exec.FileEvent.ResolveInode(p.resolvers); filename != dentryPathKeyNotFound {
+		filename := event.Exec.FileEvent.ResolveInode(p.resolvers)
+		if filename != dentryPathKeyNotFound {
 			entry := ProcessResolverEntry{
 				Filename: filename,
 			}
 
-			_ = entry
-			//p.resolvers.ProcessResolver.AddEntry(event.Exec.Pid, &entry)
+			p.resolvers.ProcessResolver.AddEntry(event.Exec.Pid, &entry)
 		}
 	case ExitEventType:
 		if _, err := event.Exit.UnmarshalBinary(data[offset:]); err != nil {
@@ -431,8 +426,9 @@ func (p *Probe) handleEvent(data []byte) {
 			return
 		}
 
+		// as far as we keep only one perf for all the event we can delete the entry right away, there won't be
+		// any race
 		p.resolvers.ProcessResolver.DelEntry(event.Exit.Pid)
-
 	default:
 		log.Errorf("unsupported event type %d", eventType)
 		return
