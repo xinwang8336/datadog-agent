@@ -94,6 +94,10 @@ func (t EventType) String() string {
 		return "setxattr"
 	case FileRemoveXAttrEventType:
 		return "removexattr"
+	case ExecEventType:
+		return "exec"
+	case ExitEventType:
+		return "exit"
 	}
 	return "unknown"
 }

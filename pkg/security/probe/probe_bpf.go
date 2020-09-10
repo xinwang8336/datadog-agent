@@ -265,7 +265,7 @@ func (p *Probe) handleEvent(data []byte) {
 	offset += read
 
 	eventType := EventType(event.Type)
-	log.Tracef("Decoding event %s", eventType.String())
+	log.Tracef("Decoding event %s(%d)", eventType.String(), event.Type)
 
 	switch eventType {
 	case FileOpenEventType:
@@ -377,6 +377,13 @@ func (p *Probe) handleEvent(data []byte) {
 			return
 		}
 	case FileMountEventType:
+		read, err = unmarshalBinary(data[offset:], &event.Process, &event.Container)
+		if err != nil {
+			log.Errorf("failed to decode event `utimes`: %s", err)
+			return
+		}
+		offset += read
+
 		if _, err := event.Mount.UnmarshalBinary(data[offset:]); err != nil {
 			log.Errorf("failed to decode mount event: %s (offset %d, len %d)", err, offset, len(data))
 			return
@@ -389,6 +396,13 @@ func (p *Probe) handleEvent(data []byte) {
 		// Insert new mount point in cache
 		p.resolvers.MountResolver.Insert(&event.Mount)
 	case FileUmountEventType:
+		read, err = unmarshalBinary(data[offset:], &event.Process, &event.Container)
+		if err != nil {
+			log.Errorf("failed to decode event `utimes`: %s", err)
+			return
+		}
+		offset += read
+
 		if _, err := event.Umount.UnmarshalBinary(data[offset:]); err != nil {
 			log.Errorf("failed to decode umount event: %s (offset %d, len %d)", err, offset, len(data))
 			return
@@ -398,11 +412,25 @@ func (p *Probe) handleEvent(data []byte) {
 			log.Errorf("failed to delete mount point %d from cache: %s", event.Umount.MountID, err)
 		}
 	case FileSetXAttrEventType:
+		read, err = unmarshalBinary(data[offset:], &event.Process, &event.Container)
+		if err != nil {
+			log.Errorf("failed to decode event `utimes`: %s", err)
+			return
+		}
+		offset += read
+
 		if _, err := event.SetXAttr.UnmarshalBinary(data[offset:]); err != nil {
 			log.Errorf("failed to decode setxattr event: %s (offset %d, len %d)", err, offset, len(data))
 			return
 		}
 	case FileRemoveXAttrEventType:
+		read, err = unmarshalBinary(data[offset:], &event.Process, &event.Container)
+		if err != nil {
+			log.Errorf("failed to decode event `utimes`: %s", err)
+			return
+		}
+		offset += read
+
 		if _, err := event.RemoveXAttr.UnmarshalBinary(data[offset:]); err != nil {
 			log.Errorf("failed to decode removexattr event: %s (offset %d, len %d)", err, offset, len(data))
 			return
@@ -412,6 +440,7 @@ func (p *Probe) handleEvent(data []byte) {
 			log.Errorf("failed to decode exec event: %s (offset %d, len %d)", err, offset, len(data))
 			return
 		}
+
 		filename := event.Exec.FileEvent.ResolveInode(p.resolvers)
 		if filename != dentryPathKeyNotFound {
 			entry := ProcessResolverEntry{
