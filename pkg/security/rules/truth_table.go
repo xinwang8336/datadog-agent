@@ -6,7 +6,12 @@
 package rules
 
 import (
+	"bytes"
+	"fmt"
 	"reflect"
+	"sort"
+	"strings"
+	"text/tabwriter"
 
 	"github.com/DataDog/datadog-agent/pkg/security/secl/eval"
 )
@@ -19,6 +24,10 @@ type truthEntry struct {
 type truthTable struct {
 	Entries []truthEntry
 }
+
+func (te truthEntry) Len() int           { return len(te.Values) }
+func (te truthEntry) Swap(i, j int)      { te.Values[i], te.Values[j] = te.Values[j], te.Values[i] }
+func (te truthEntry) Less(i, j int) bool { return te.Values[i].Field < te.Values[j].Field }
 
 func (tt *truthTable) getApprovers(fields ...string) map[eval.Field]FilterValues {
 	filterValues := make(map[eval.Field]FilterValues)
@@ -188,6 +197,47 @@ func combineFilterValues(filterValues []FilterValues) []FilterValues {
 	}
 
 	return combined
+}
+
+func (t *truthTable) String() string {
+	const padding = 16
+
+	buf := bytes.NewBufferString("\n")
+
+	w := tabwriter.NewWriter(buf, 0, 0, padding, ' ', tabwriter.AlignRight|tabwriter.Debug)
+
+	for _, entry := range t.Entries {
+		sort.Sort(entry)
+
+		var columns []string
+
+		for _, value := range entry.Values {
+			var rv interface{}
+
+			switch value.Value.(type) {
+			case string:
+				s := value.Value.(string)
+				if len(s) > padding {
+					rv = s[0:padding]
+				} else {
+					rv = value.Value
+				}
+			default:
+				rv = value.Value
+			}
+
+			if value.Not {
+				columns = append(columns, fmt.Sprintf("%s:!%v", value.Field, rv))
+			} else {
+				columns = append(columns, fmt.Sprintf("%s:%v", value.Field, rv))
+			}
+		}
+		fmt.Fprintf(w, "%s\tresult:%v\t\n", strings.Join(columns, "\t"), entry.Result)
+	}
+
+	w.Flush()
+
+	return buf.String()
 }
 
 func newTruthTable(rule *eval.Rule, event eval.Event) (*truthTable, error) {
