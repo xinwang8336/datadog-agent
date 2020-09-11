@@ -272,10 +272,8 @@ int __attribute__((always_inline)) trace__sys_open_ret(struct pt_regs *ctx) {
 
     struct open_event_t event = {
         .event.type = EVENT_OPEN,
-        .syscall = {
-            .retval = retval,
-            .timestamp = bpf_ktime_get_ns(),
-        },
+        .event.timestamp = bpf_ktime_get_ns(),
+        .syscall.retval = retval,
         .file = {
             .inode = syscall->open.path_key.ino,
             .mount_id = syscall->open.path_key.mount_id,

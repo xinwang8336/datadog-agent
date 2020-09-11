@@ -441,10 +441,11 @@ func (p *Probe) handleEvent(data []byte) {
 			return
 		}
 
-		filename := event.Exec.FileEvent.ResolveInode(p.resolvers)
-		if filename != dentryPathKeyNotFound {
+		pathnameStr := event.Exec.FileEvent.ResolveInode(p.resolvers)
+		if pathnameStr != dentryPathKeyNotFound {
 			entry := ProcessResolverEntry{
-				Filename: filename,
+				PathnameStr: pathnameStr,
+				Timestamp:   event.ResolveMonotonicTimestamp(p.resolvers),
 			}
 
 			p.resolvers.ProcessResolver.AddEntry(event.Exec.Pid, &entry)

@@ -10,6 +10,7 @@ package probe
 import (
 	"os"
 	"syscall"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -36,6 +37,8 @@ var processSnapshotProbes = []*ebpf.KProbe{
 type ProcCacheEntry struct {
 	FileEvent
 	ContainerEvent
+	TimestampRaw uint64
+	Timestamp    time.Time
 }
 
 // Bytes returns the bytes representation of process cache entry
@@ -46,11 +49,23 @@ func (pc *ProcCacheEntry) Bytes() []byte {
 }
 
 func (pc *ProcCacheEntry) UnmarshalBinary(data []byte) (int, error) {
-	return unmarshalBinary(data, &pc.FileEvent, &pc.ContainerEvent)
+	if len(data) < 45 {
+		return 0, ErrNotEnoughData
+	}
+
+	read, err := unmarshalBinary(data, &pc.FileEvent, &pc.ContainerEvent)
+	if err != nil {
+		return 0, err
+	}
+
+	pc.TimestampRaw = byteOrder.Uint64(data[read : read+8])
+
+	return read + 8, nil
 }
 
 type ProcessResolverEntry struct {
-	Filename string
+	PathnameStr string
+	Timestamp   time.Time
 }
 
 // ProcessResolver resolved process context
@@ -90,13 +105,16 @@ func (p *ProcessResolver) resolve(pid uint32) *ProcessResolverEntry {
 		return nil
 	}
 
-	filename := procCacheEntry.FileEvent.ResolveInode(p.resolvers)
-	if filename == dentryPathKeyNotFound {
+	pathnameStr := procCacheEntry.FileEvent.ResolveInode(p.resolvers)
+	if pathnameStr == dentryPathKeyNotFound {
 		return nil
 	}
 
+	timestamp := p.resolvers.TimeResolver.ResolveMonotonicTimestamp(procCacheEntry.TimestampRaw)
+
 	entry := &ProcessResolverEntry{
-		Filename: filename,
+		PathnameStr: pathnameStr,
+		Timestamp:   timestamp,
 	}
 	p.AddEntry(pid, entry)
 
@@ -192,13 +210,13 @@ func (p *ProcessResolver) snapshotProcess(pid uint32) bool {
 	procExecPath := utils.ProcExePath(pid)
 
 	// Get process filename and pre-fill the cache
-	filename, err := os.Readlink(procExecPath)
+	pathnameStr, err := os.Readlink(procExecPath)
 	if err != nil {
 		log.Debug(errors.Wrapf(err, "snapshot failed for %d: couldn't readlink binary", pid))
 		return false
 	}
 	p.AddEntry(pid, &ProcessResolverEntry{
-		Filename: filename,
+		PathnameStr: pathnameStr,
 	})
 
 	// Get the inode of the process binary
