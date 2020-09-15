@@ -8,9 +8,6 @@
 package probe
 
 import (
-	"os"
-	"syscall"
-
 	"github.com/DataDog/datadog-agent/pkg/security/ebpf"
 	"github.com/DataDog/datadog-agent/pkg/security/rules"
 	"github.com/DataDog/datadog-agent/pkg/security/secl/eval"
@@ -86,26 +83,12 @@ func discardFlags(probe *Probe, tableName string, flags ...int) error {
 	return setFlagsFilter(probe, tableName, flags...)
 }
 
-func approveProcessFilename(probe *Probe, tableName string, filename string) error {
-	fileinfo, err := os.Stat(filename)
-	if err != nil {
-		return err
-	}
-	stat, _ := fileinfo.Sys().(*syscall.Stat_t)
-	key := ebpf.Uint64TableItem(uint64(stat.Ino))
+func discardProcessFilename(probe *Probe, tableName string, event *Event) error {
+	key := ebpf.Uint32TableItem(event.Process.Pid)
 
 	table := probe.Table(tableName)
 	if err := table.Set(key, ebpf.ZeroUint8TableItem); err != nil {
 		return err
-	}
-	return nil
-}
-
-func approveProcessFilenames(probe *Probe, tableName string, filenames ...string) error {
-	for _, filename := range filenames {
-		if err := approveProcessFilename(probe, tableName, filename); err != nil {
-			return err
-		}
 	}
 
 	return nil

@@ -471,7 +471,7 @@ func (p *Probe) handleEvent(data []byte) {
 }
 
 // OnNewDiscarder is called when a new discarder is found
-func (p *Probe) OnNewDiscarder(rs *rules.RuleSet, event *Event, field eval.Field) error {
+func (p *Probe) OnNewDiscarder(rs *rules.RuleSet, event *Event, field eval.Field, eventType eval.EventType) error {
 	// discarders disabled
 	if !p.config.EnableDiscarders {
 		return nil
@@ -479,17 +479,12 @@ func (p *Probe) OnNewDiscarder(rs *rules.RuleSet, event *Event, field eval.Field
 
 	log.Tracef("New discarder event %+v for field %s\n", event, field)
 
-	eventType, err := event.GetFieldEventType(field)
-	if err != nil {
-		return err
-	}
-
 	for _, fnc := range p.onDiscardersFncs[eventType] {
 		discarder := Discarder{
 			Field: field,
 		}
 
-		if err = fnc(rs, event, p, discarder); err != nil {
+		if err := fnc(rs, event, p, discarder); err != nil {
 			return err
 		}
 	}

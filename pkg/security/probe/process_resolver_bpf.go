@@ -50,6 +50,11 @@ func (p *ProcessResolver) AddEntry(pid uint32, entry *ProcessResolverEntry) {
 // DelEntry removes an entry from the cache
 func (p *ProcessResolver) DelEntry(pid uint32) {
 	delete(p.entryCache, pid)
+
+	pidb := make([]byte, 4)
+	byteOrder.PutUint32(pidb, pid)
+
+	p.pidCookieMap.Delete(pidb)
 }
 
 func (p *ProcessResolver) resolve(pid uint32) *ProcessResolverEntry {
