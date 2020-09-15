@@ -121,16 +121,18 @@ func TestFetchAllCached(t *testing.T) {
 	tagger := newTagger()
 	tagger.Init(catalog)
 
-	tagger.tagStore.processTagInfo(&collectors.TagInfo{
-		Entity:       "entity_name",
-		Source:       "stream",
-		LowCardTags:  []string{"low1"},
-		HighCardTags: []string{"high"},
-	})
-	tagger.tagStore.processTagInfo(&collectors.TagInfo{
-		Entity:      "entity_name",
-		Source:      "pull",
-		LowCardTags: []string{"low2"},
+	tagger.tagStore.processTagInfo([]*collectors.TagInfo{
+		{
+			Entity:       "entity_name",
+			Source:       "stream",
+			LowCardTags:  []string{"low1"},
+			HighCardTags: []string{"high"},
+		},
+		{
+			Entity:      "entity_name",
+			Source:      "pull",
+			LowCardTags: []string{"low2"},
+		},
 	})
 
 	streamer := tagger.streamers["stream"].(*DummyCollector)
@@ -165,10 +167,12 @@ func TestFetchOneCached(t *testing.T) {
 	tagger := newTagger()
 	tagger.Init(catalog)
 
-	tagger.tagStore.processTagInfo(&collectors.TagInfo{
-		Entity:      "entity_name",
-		Source:      "stream",
-		LowCardTags: []string{"low1"},
+	tagger.tagStore.processTagInfo([]*collectors.TagInfo{
+		{
+			Entity:      "entity_name",
+			Source:      "stream",
+			LowCardTags: []string{"low1"},
+		},
 	})
 
 	streamer := tagger.streamers["stream"].(*DummyCollector)
@@ -199,10 +203,12 @@ func TestEmptyEntity(t *testing.T) {
 	tagger := newTagger()
 	tagger.Init(catalog)
 
-	tagger.tagStore.processTagInfo(&collectors.TagInfo{
-		Entity:      "entity_name",
-		Source:      "stream",
-		LowCardTags: []string{"low1"},
+	tagger.tagStore.processTagInfo([]*collectors.TagInfo{
+		{
+			Entity:      "entity_name",
+			Source:      "stream",
+			LowCardTags: []string{"low1"},
+		},
 	})
 
 	tags, err := tagger.Tag("", collectors.HighCardinality)
@@ -286,10 +292,12 @@ func TestSafeCache(t *testing.T) {
 	tagger := newTagger()
 	tagger.Init(catalog)
 
-	tagger.tagStore.processTagInfo(&collectors.TagInfo{
-		Entity:      "entity_name",
-		Source:      "pull",
-		LowCardTags: []string{"low1", "low2", "low3"},
+	tagger.tagStore.processTagInfo([]*collectors.TagInfo{
+		{
+			Entity:      "entity_name",
+			Source:      "pull",
+			LowCardTags: []string{"low1", "low2", "low3"},
+		},
 	})
 
 	// First lookup

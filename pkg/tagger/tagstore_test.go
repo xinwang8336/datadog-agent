@@ -7,6 +7,7 @@ package tagger
 
 import (
 	"math/rand"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,17 +26,19 @@ func (s *StoreTestSuite) SetupTest() {
 }
 
 func (s *StoreTestSuite) TestIngest() {
-	s.store.processTagInfo(&collectors.TagInfo{
-		Source:               "source1",
-		Entity:               "test",
-		LowCardTags:          []string{"tag"},
-		OrchestratorCardTags: []string{"tag"},
-		HighCardTags:         []string{"tag"},
-	})
-	s.store.processTagInfo(&collectors.TagInfo{
-		Source:      "source2",
-		Entity:      "test",
-		LowCardTags: []string{"tag"},
+	s.store.processTagInfo([]*collectors.TagInfo{
+		{
+			Source:               "source1",
+			Entity:               "test",
+			LowCardTags:          []string{"tag"},
+			OrchestratorCardTags: []string{"tag"},
+			HighCardTags:         []string{"tag"},
+		},
+		{
+			Source:      "source2",
+			Entity:      "test",
+			LowCardTags: []string{"tag"},
+		},
 	})
 
 	s.store.storeMutex.RLock()
@@ -48,21 +51,23 @@ func (s *StoreTestSuite) TestIngest() {
 }
 
 func (s *StoreTestSuite) TestLookup() {
-	s.store.processTagInfo(&collectors.TagInfo{
-		Source:       "source1",
-		Entity:       "test",
-		LowCardTags:  []string{"tag"},
-		HighCardTags: []string{"tag"},
-	})
-	s.store.processTagInfo(&collectors.TagInfo{
-		Source:      "source2",
-		Entity:      "test",
-		LowCardTags: []string{"tag"},
-	})
-	s.store.processTagInfo(&collectors.TagInfo{
-		Source:               "source3",
-		Entity:               "test",
-		OrchestratorCardTags: []string{"tag"},
+	s.store.processTagInfo([]*collectors.TagInfo{
+		{
+			Source:       "source1",
+			Entity:       "test",
+			LowCardTags:  []string{"tag"},
+			HighCardTags: []string{"tag"},
+		},
+		{
+			Source:      "source2",
+			Entity:      "test",
+			LowCardTags: []string{"tag"},
+		},
+		{
+			Source:               "source3",
+			Entity:               "test",
+			OrchestratorCardTags: []string{"tag"},
+		},
 	})
 
 	tagsHigh, sourcesHigh, hashHigh := s.store.lookup("test", collectors.HighCardinality)
@@ -94,17 +99,19 @@ func (s *StoreTestSuite) TestLookup() {
 }
 
 func (s *StoreTestSuite) TestLookupStandard() {
-	s.store.processTagInfo(&collectors.TagInfo{
-		Source:       "source1",
-		Entity:       "test",
-		LowCardTags:  []string{"tag", "env:dev"},
-		StandardTags: []string{"env:dev"},
-	})
-	s.store.processTagInfo(&collectors.TagInfo{
-		Source:       "source2",
-		Entity:       "test",
-		LowCardTags:  []string{"tag", "service:foo"},
-		StandardTags: []string{"service:foo"},
+	s.store.processTagInfo([]*collectors.TagInfo{
+		{
+			Source:       "source1",
+			Entity:       "test",
+			LowCardTags:  []string{"tag", "env:dev"},
+			StandardTags: []string{"env:dev"},
+		},
+		{
+			Source:       "source2",
+			Entity:       "test",
+			LowCardTags:  []string{"tag", "service:foo"},
+			StandardTags: []string{"service:foo"},
+		},
 	})
 
 	standard, err := s.store.lookupStandard("test")
@@ -128,31 +135,33 @@ func (s *StoreTestSuite) TestPrune() {
 	assert.Len(s.T(), s.store.toDelete, 0)
 	s.store.toDeleteMutex.RUnlock()
 
-	// Adds
-	s.store.processTagInfo(&collectors.TagInfo{
-		Source:               "source1",
-		Entity:               "test1",
-		LowCardTags:          []string{"tag"},
-		OrchestratorCardTags: []string{"tag"},
-		HighCardTags:         []string{"tag"},
-	})
-	s.store.processTagInfo(&collectors.TagInfo{
-		Source:      "source2",
-		Entity:      "test1",
-		LowCardTags: []string{"tag"},
-	})
-	s.store.processTagInfo(&collectors.TagInfo{
-		Source:       "source1",
-		Entity:       "test2",
-		LowCardTags:  []string{"tag"},
-		HighCardTags: []string{"tag"},
-	})
+	s.store.processTagInfo([]*collectors.TagInfo{
+		// Adds
+		{
+			Source:               "source1",
+			Entity:               "test1",
+			LowCardTags:          []string{"tag"},
+			OrchestratorCardTags: []string{"tag"},
+			HighCardTags:         []string{"tag"},
+		},
+		{
+			Source:      "source2",
+			Entity:      "test1",
+			LowCardTags: []string{"tag"},
+		},
+		{
+			Source:       "source1",
+			Entity:       "test2",
+			LowCardTags:  []string{"tag"},
+			HighCardTags: []string{"tag"},
+		},
 
-	// Deletion, to be batched
-	s.store.processTagInfo(&collectors.TagInfo{
-		Source:       "source1",
-		Entity:       "test1",
-		DeleteEntity: true,
+		// Deletion, to be batched
+		{
+			Source:       "source1",
+			Entity:       "test1",
+			DeleteEntity: true,
+		},
 	})
 
 	s.store.toDeleteMutex.RLock()
@@ -322,5 +331,101 @@ func TestDigest(t *testing.T) {
 		beforeShuffle := computeTagsHash(tags)
 		shuffleTags(tags)
 		assert.Equal(t, beforeShuffle, computeTagsHash(tags))
+	}
+}
+
+type entityEventExpectation struct {
+	eventType    EventType
+	id           string
+	lowCardTags  []string
+	highCardTags []string
+}
+
+func TestSubscribe(t *testing.T) {
+	store := newTagStore()
+
+	var expectedEvents = []entityEventExpectation{
+		{EventTypeAdded, "test1", []string{"low"}, []string{"high"}},
+		{EventTypeAdded, "test2", []string{"low"}, []string{"high"}},
+		{EventTypeModified, "test1", []string{"low"}, []string{"high:1", "high:2"}},
+	}
+
+	store.processTagInfo([]*collectors.TagInfo{
+		{
+			Source:       "source",
+			Entity:       "test1",
+			LowCardTags:  []string{"low"},
+			HighCardTags: []string{"high"},
+		},
+	})
+
+	highCardEvents := []EntityEvent{}
+	lowCardEvents := []EntityEvent{}
+
+	highCardCh := store.subscribe(collectors.HighCardinality)
+	lowCardCh := store.subscribe(collectors.LowCardinality)
+
+	store.processTagInfo([]*collectors.TagInfo{
+		{
+			Source:       "source",
+			Entity:       "test1",
+			LowCardTags:  []string{"low"},
+			HighCardTags: []string{"high:1", "high:2"},
+		},
+		{
+			Source:       "source",
+			Entity:       "test1",
+			DeleteEntity: true,
+		},
+		{
+			Source:       "source",
+			Entity:       "test2",
+			LowCardTags:  []string{"low"},
+			HighCardTags: []string{"high"},
+		},
+	})
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go collectEvents(&wg, &highCardEvents, highCardCh)
+	go collectEvents(&wg, &lowCardEvents, lowCardCh)
+
+	store.unsubscribe(highCardCh)
+	store.unsubscribe(lowCardCh)
+
+	wg.Wait()
+
+	checkEvents(t, expectedEvents, highCardEvents, true)
+	checkEvents(t, expectedEvents, lowCardEvents, false)
+}
+
+func collectEvents(wg *sync.WaitGroup, events *[]EntityEvent, ch chan []EntityEvent) {
+	for chEvents := range ch {
+		for _, event := range chEvents {
+			*events = append(*events, event)
+		}
+	}
+
+	wg.Done()
+}
+
+func checkEvents(t *testing.T, expectations []entityEventExpectation, events []EntityEvent, highCardinality bool) {
+	passed := assert.Len(t, events, len(expectations))
+	if !passed {
+		return
+	}
+
+	for i, expectation := range expectations {
+		event := events[i]
+
+		tags := expectation.lowCardTags
+		if highCardinality {
+			tags = append(tags, expectation.highCardTags...)
+		}
+
+		assert.Equal(t, expectation.eventType, event.EventType)
+		assert.Equal(t, expectation.id, event.Entity.ID)
+		assert.Equal(t, tags, event.Entity.Tags)
 	}
 }
