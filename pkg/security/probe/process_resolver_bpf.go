@@ -10,6 +10,7 @@ package probe
 import (
 	"os"
 	"syscall"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -21,7 +22,7 @@ import (
 
 // processSnapshotTables list of tables used to snapshot
 var processSnapshotTables = []string{
-	"inode_numlower",
+	"inode_info_cache",
 }
 
 // processSnapshotProbes list of hooks used to snapshot
@@ -32,14 +33,30 @@ var processSnapshotProbes = []*ebpf.KProbe{
 	},
 }
 
+// InodeInfo holds information related to inode from kernel
+type InodeInfo struct {
+	MountID         uint32
+	OverlayNumLower int32
+}
+
 // ProcessResolver resolved process context
 type ProcessResolver struct {
-	probe            *Probe
-	resolvers        *Resolvers
-	inodeNumlowerMap *ebpf.Table
-	procCacheMap     *ebpf.Table
-	pidCookieMap     *ebpf.Table
-	entryCache       map[uint32]*ProcessResolverEntry
+	probe        *Probe
+	resolvers    *Resolvers
+	inodeInfoMap *ebpf.Table
+	procCacheMap *ebpf.Table
+	pidCookieMap *ebpf.Table
+	entryCache   map[uint32]*ProcessResolverEntry
+}
+
+// UnmarshalBinary unmarshals a binary representation of itself
+func (i *InodeInfo) UnmarshalBinary(data []byte) (int, error) {
+	if len(data) < 8 {
+		return 0, ErrNotEnoughData
+	}
+	i.MountID = byteOrder.Uint32(data)
+	i.OverlayNumLower = int32(byteOrder.Uint32(data[4:]))
+	return 8, nil
 }
 
 // AddEntry add an entry to the local cache
@@ -76,16 +93,16 @@ func (p *ProcessResolver) resolve(pid uint32) *ProcessResolverEntry {
 		return nil
 	}
 
-	pathnameStr := procCacheEntry.FileEvent.ResolveInode(p.resolvers)
-	if pathnameStr == dentryPathKeyNotFound {
-		return nil
-	}
+	/*	pathnameStr := procCacheEntry.FileEvent.ResolveInode(p.resolvers)
+		if pathnameStr == dentryPathKeyNotFound {
+			return nil
+		}*/
 
 	timestamp := p.resolvers.TimeResolver.ResolveMonotonicTimestamp(procCacheEntry.TimestampRaw)
 
 	entry := &ProcessResolverEntry{
-		PathnameStr: pathnameStr,
-		Timestamp:   timestamp,
+		//PathnameStr: pathnameStr,
+		Timestamp: timestamp,
 	}
 	p.AddEntry(pid, entry)
 
@@ -101,6 +118,10 @@ func (p *ProcessResolver) Resolve(pid uint32) *ProcessResolverEntry {
 
 	// fallback request the map directly, the perf event should be delayed
 	return p.resolve(pid)
+}
+
+func (p *ProcessResolver) Get(pid uint32) *ProcessResolverEntry {
+	return p.entryCache[pid]
 }
 
 // Start starts the resolver
@@ -135,7 +156,7 @@ func (p *ProcessResolver) snapshot() error {
 		}
 
 		// Notify that we modified the cache.
-		if p.snapshotProcess(uint32(proc.Pid)) {
+		if p.snapshotProcess(proc) {
 			cacheModified = true
 		}
 	}
@@ -150,19 +171,33 @@ func (p *ProcessResolver) snapshot() error {
 	return nil
 }
 
-// snapshotProcess snapshots /proc for the provided pid. This method returns true if it updated the kernel process cache.
-func (p *ProcessResolver) snapshotProcess(pid uint32) bool {
-	entry := ProcCacheEntry{}
-	pidb := make([]byte, 4)
-	cookieb := make([]byte, 4)
+func (p *ProcessResolver) retrieveInodeInfo(inode uint64) (*InodeInfo, error) {
 	inodeb := make([]byte, 8)
 
-	// Check if there already is an entry in the pid <-> cookie cache
-	byteOrder.PutUint32(pidb, pid)
-	if _, err := p.pidCookieMap.Get(pidb); err == nil {
-		// If there is a cookie, there is an entry in cache, we don't need to do anything else
+	byteOrder.PutUint64(inodeb, inode)
+	data, err := p.inodeInfoMap.Get(inodeb)
+	if err != nil {
+		return nil, err
+	}
+
+	var info InodeInfo
+	if _, err := info.UnmarshalBinary(data); err != nil {
+		return nil, err
+	}
+
+	return &info, nil
+}
+
+// snapshotProcess snapshots /proc for the provided pid. This method returns true if it updated the kernel process cache.
+func (p *ProcessResolver) snapshotProcess(proc *process.FilledProcess) bool {
+	pid := uint32(proc.Pid)
+
+	if _, exists := p.entryCache[pid]; exists {
 		return false
 	}
+
+	// create time
+	timestamp := time.Unix(0, proc.CreateTime*int64(time.Millisecond))
 
 	// Populate the mount point cache for the process
 	if err := p.resolvers.MountResolver.SyncCache(pid); err != nil {
@@ -178,7 +213,6 @@ func (p *ProcessResolver) snapshotProcess(pid uint32) bool {
 		log.Debug(errors.Wrapf(err, "snapshot failed for %d: couldn't parse container ID", pid))
 		return false
 	}
-	entry.ContainerEvent.ID = string(containerID)
 
 	procExecPath := utils.ProcExePath(pid)
 
@@ -188,9 +222,6 @@ func (p *ProcessResolver) snapshotProcess(pid uint32) bool {
 		log.Debug(errors.Wrapf(err, "snapshot failed for %d: couldn't readlink binary", pid))
 		return false
 	}
-	p.AddEntry(pid, &ProcessResolverEntry{
-		PathnameStr: pathnameStr,
-	})
 
 	// Get the inode of the process binary
 	fi, err := os.Stat(procExecPath)
@@ -203,29 +234,27 @@ func (p *ProcessResolver) snapshotProcess(pid uint32) bool {
 		log.Debug(errors.Wrapf(err, "snapshot failed for %d: couldn't stat binary", pid))
 		return false
 	}
-	entry.Inode = stat.Ino
+	inode := stat.Ino
 
-	// Fetch the numlower value of the inode
-	byteOrder.PutUint64(inodeb, stat.Ino)
-	numlowerb, err := p.inodeNumlowerMap.Get(inodeb)
+	info, err := p.retrieveInodeInfo(inode)
 	if err != nil {
-		log.Debug(errors.Wrapf(err, "snapshot failed for %d: couldn't retrieve numlower value", pid))
+		log.Debug(errors.Wrapf(err, "snapshot failed for %d: couldn't retrieve inode info", pid))
 		return false
 	}
-	entry.OverlayNumLower = int32(byteOrder.Uint32(numlowerb))
 
-	// Generate a new cookie for this pid
-	byteOrder.PutUint32(cookieb, utils.NewCookie())
-
-	// Insert the new cache entry and then the cookie
-	if err := p.procCacheMap.SetP(cookieb, entry.Bytes()); err != nil {
-		log.Debug(errors.Wrapf(err, "snapshot failed for %d: couldn't insert cache entry", pid))
-		return false
-	}
-	if err := p.pidCookieMap.SetP(pidb, cookieb); err != nil {
-		log.Debug(errors.Wrapf(err, "snapshot failed for %d: couldn't insert cookie", pid))
-		return false
-	}
+	// add the entry to the cache
+	p.AddEntry(pid, &ProcessResolverEntry{
+		FileEvent: FileEvent{
+			Inode:           inode,
+			OverlayNumLower: info.OverlayNumLower,
+			MountID:         info.MountID,
+			PathnameStr:     pathnameStr,
+		},
+		ContainerEvent: ContainerEvent{
+			ID: string(containerID),
+		},
+		Timestamp: timestamp,
+	})
 
 	return true
 }
@@ -240,9 +269,9 @@ func (p *ProcessResolver) Snapshot() error {
 	}
 
 	// Select the inode numlower map to prepare for the snapshot
-	p.inodeNumlowerMap = p.probe.Table("inode_numlower")
-	if p.inodeNumlowerMap == nil {
-		return errors.New("inode_numlower BPF_HASH table doesn't exist")
+	p.inodeInfoMap = p.probe.Table("inode_info_cache")
+	if p.inodeInfoMap == nil {
+		return errors.New("inode_info_cache BPF_HASH table doesn't exist")
 	}
 
 	// Activate the probes required by the snapshot

@@ -19,13 +19,6 @@ type ProcCacheEntry struct {
 	Timestamp    time.Time
 }
 
-// Bytes returns the bytes representation of process cache entry
-func (pc *ProcCacheEntry) Bytes() []byte {
-	b := pc.FileEvent.Bytes()
-	b = append(b, pc.ContainerEvent.Bytes()...)
-	return b
-}
-
 // UnmarshalBinary returns the binary representation of itself
 func (pc *ProcCacheEntry) UnmarshalBinary(data []byte) (int, error) {
 	if len(data) < 45 {
@@ -43,6 +36,7 @@ func (pc *ProcCacheEntry) UnmarshalBinary(data []byte) (int, error) {
 }
 
 type ProcessResolverEntry struct {
-	PathnameStr string
-	Timestamp   time.Time
+	FileEvent
+	ContainerEvent
+	Timestamp time.Time
 }

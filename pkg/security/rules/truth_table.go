@@ -199,14 +199,14 @@ func combineFilterValues(filterValues []FilterValues) []FilterValues {
 	return combined
 }
 
-func (t *truthTable) String() string {
+func (tt *truthTable) String() string {
 	const padding = 16
 
 	buf := bytes.NewBufferString("\n")
 
 	w := tabwriter.NewWriter(buf, 0, 0, padding, ' ', tabwriter.AlignRight|tabwriter.Debug)
 
-	for _, entry := range t.Entries {
+	for _, entry := range tt.Entries {
 		sort.Sort(entry)
 
 		var columns []string
