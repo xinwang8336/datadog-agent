@@ -8,6 +8,7 @@
 package probe
 
 import (
+	"fmt"
 	"os"
 	"syscall"
 	"time"
@@ -242,8 +243,8 @@ func (p *ProcessResolver) snapshotProcess(proc *process.FilledProcess) bool {
 		return false
 	}
 
-	// add the entry to the cache
-	p.AddEntry(pid, &ProcessResolverEntry{
+	// preset and add the entry to the cache
+	entry := &ProcessResolverEntry{
 		FileEvent: FileEvent{
 			Inode:           inode,
 			OverlayNumLower: info.OverlayNumLower,
@@ -254,7 +255,13 @@ func (p *ProcessResolver) snapshotProcess(proc *process.FilledProcess) bool {
 			ID: string(containerID),
 		},
 		Timestamp: timestamp,
-	})
+	}
+	entry.FileEvent.ResolveContainerPath(p.resolvers)
+	if pid == 20913 {
+		fmt.Printf("KKKKKKKKKKKKK: %+v\n", entry.FileEvent)
+	}
+
+	p.AddEntry(pid, entry)
 
 	return true
 }
@@ -282,13 +289,13 @@ func (p *ProcessResolver) Snapshot() error {
 	}
 
 	// Deregister probes
-	defer func() {
+	/*defer func() {
 		for _, kp := range processSnapshotProbes {
 			if err := p.probe.Module.UnregisterKprobe(kp); err != nil {
 				log.Debugf("couldn't unregister kprobe %s: %v", kp.Name, err)
 			}
 		}
-	}()
+	}()*/
 
 	for retry := 0; retry < 5; retry++ {
 		if err := p.snapshot(); err == nil {

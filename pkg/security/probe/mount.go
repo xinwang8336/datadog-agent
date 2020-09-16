@@ -8,6 +8,7 @@
 package probe
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"strconv"
@@ -130,6 +131,10 @@ func (mr *MountResolver) SyncCache(pid uint32) error {
 		}
 
 		mr.insert(e)
+
+		if pid == 20913 {
+			fmt.Printf("NNNNNNNNNNNNNNNN: %d %d %+v\n", mnt.ID, pid, e)
+		}
 	}
 
 	return nil
