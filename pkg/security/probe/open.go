@@ -70,6 +70,13 @@ var openHookPoints = []*HookPoint{
 		EventTypes: []eval.EventType{"open"},
 	},
 	{
+		Name: "do_dentry_open",
+		KProbes: []*ebpf.KProbe{{
+			EntryFunc: "kprobe/do_dentry_open",
+		}},
+		EventTypes: []eval.EventType{"open"},
+	},
+	{
 		Name: "vfs_truncate",
 		KProbes: []*ebpf.KProbe{{
 			EntryFunc: "kprobe/vfs_truncate",
