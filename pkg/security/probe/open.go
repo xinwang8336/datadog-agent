@@ -54,14 +54,21 @@ var openHookPoints = []*HookPoint{
 		EventTypes: []eval.EventType{"open"},
 	},
 	{
+		Name: "ovl_d_real",
+		KProbes: []*ebpf.KProbe{{
+			ExitFunc: "kretprobe/ovl_d_real",
+		}},
+		EventTypes: []eval.EventType{"open"},
+	},
+	{
 		Name:       "sys_openat",
 		KProbes:    syscallKprobe("openat", true),
 		EventTypes: []eval.EventType{"open"},
 	},
 	{
-		Name: "vfs_open",
+		Name: "do_dentry_open",
 		KProbes: []*ebpf.KProbe{{
-			EntryFunc: "kprobe/vfs_open",
+			EntryFunc: "kprobe/do_dentry_open",
 		}},
 		EventTypes: []eval.EventType{"open"},
 	},
