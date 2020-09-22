@@ -146,7 +146,7 @@ def functional_tests(
     if arch == "x86":
         env["GOARCH"] = "386"
 
-    cmd = 'sudo -E go test -tags functionaltests,linux_bpf,{build_tags} {output_opt} {verbose_opt} {run_opt} {REPO_PATH}/pkg/security/tests'
+    cmd = 'sudo -E go test -tags functionaltests,linux_bpf,ebpf_bindata,{build_tags} {output_opt} {verbose_opt} {run_opt} {REPO_PATH}/pkg/security/tests'
 
     args = {
         "verbose_opt": "-v" if verbose else "",
@@ -187,7 +187,8 @@ def docker_functional_tests(ctx, race=False, verbose=False, go_version=None, arc
     container_name = 'security-agent-tests'
     capabilities = ['SYS_ADMIN', 'SYS_RESOURCE', 'SYS_PTRACE', 'NET_ADMIN', 'IPC_LOCK', 'ALL']
 
-    cmd = 'docker run --name {container_name} {caps} -d '
+    cmd = 'docker run --name {container_name} {caps} --privileged -d '
+    cmd += '-v /proc:/host/proc -e HOST_PROC=/host/proc '
     cmd += '-v {GOPATH}/src/{REPO_PATH}/pkg/security/tests:/tests debian:bullseye sleep 3600'
 
     args = {
