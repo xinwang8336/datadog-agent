@@ -9,7 +9,6 @@ package tests
 
 import (
 	"os"
-	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -55,16 +54,10 @@ func TestMount(t *testing.T) {
 			t.Errorf("expected mount event, got %s", event.GetType())
 		}
 
-		p := event.Mount.MountPointStr
-		p = strings.Replace(p, "/tmp", "", 1)
-		if p != strings.Replace(dstMntPath, "/tmp", "", 1) {
-			t.Errorf("expected %v for ParentPathStr, got %v", mntPath, p)
-		}
-
-		if fs := event.Mount.FSType; fs != "bind" {
+		// use accessor to parse properly the mount type
+		if fs := event.Mount.GetFSType(); fs != "bind" {
 			t.Errorf("expected a bind mount, got %v", fs)
 		}
-		mntID = event.Mount.NewMountID
 	}
 
 	// Test umount
