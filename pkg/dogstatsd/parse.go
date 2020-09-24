@@ -2,6 +2,7 @@ package dogstatsd
 
 import (
 	"bytes"
+	"fmt"
 	"strconv"
 	"unsafe"
 
@@ -80,6 +81,41 @@ func (p *parser) parseTags(rawTags []byte) []string {
 	}
 	tagsList[i] = p.interner.LoadOrStore(rawTags)
 	return tagsList
+}
+
+// parse a list of float64 separated by colonSeparator
+func parseFloat64List(rawFloats []byte) ([]float64, error) {
+	var value float64
+	var err error
+	idx := 0
+	values := []float64{}
+
+	for idx != -1 && len(rawFloats) != 0 {
+		idx = bytes.Index(rawFloats, colonSeparator)
+		// skip empty value such as '21::22'
+		if idx == 0 {
+			rawFloats = rawFloats[len(colonSeparator):]
+			continue
+		}
+
+		// last value
+		if idx == -1 {
+			value, err = parseFloat64(rawFloats)
+		} else {
+			value, err = parseFloat64(rawFloats[0:idx])
+			rawFloats = rawFloats[idx+len(colonSeparator):]
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		values = append(values, value)
+	}
+	if len(values) == 0 {
+		return nil, fmt.Errorf("no value found")
+	}
+	return values, nil
 }
 
 // the std API does not have methods to do []byte => float parsing

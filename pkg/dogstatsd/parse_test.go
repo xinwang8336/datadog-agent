@@ -57,6 +57,38 @@ func TestUnsafeParseFloat(t *testing.T) {
 	assert.Equal(t, unsafeFloat, float)
 }
 
+func TestUnsafeParseFloatList(t *testing.T) {
+	unsafeFloats, err := parseFloat64List([]byte("1.1234:21.5:13"))
+	assert.NoError(t, err)
+	assert.Len(t, unsafeFloats, 3)
+	assert.Equal(t, unsafeFloats, []float64{1.1234, 21.5, 13})
+
+	unsafeFloats, err = parseFloat64List([]byte("1.1234"))
+	assert.NoError(t, err)
+	assert.Len(t, unsafeFloats, 1)
+	assert.Equal(t, unsafeFloats, []float64{1.1234})
+
+	unsafeFloats, err = parseFloat64List([]byte("1.1234:41:"))
+	assert.NoError(t, err)
+	assert.Len(t, unsafeFloats, 2)
+	assert.Equal(t, unsafeFloats, []float64{1.1234, 41})
+
+	unsafeFloats, err = parseFloat64List([]byte("1.1234::41"))
+	assert.NoError(t, err)
+	assert.Len(t, unsafeFloats, 2)
+
+	assert.Equal(t, unsafeFloats, []float64{1.1234, 41})
+
+	unsafeFloats, err = parseFloat64List([]byte(":1.1234::41"))
+	assert.NoError(t, err)
+	assert.Len(t, unsafeFloats, 2)
+	assert.Equal(t, unsafeFloats, []float64{1.1234, 41})
+
+	_, err = parseFloat64List([]byte(""))
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(), "no value found")
+}
+
 func TestUnsafeParseInt(t *testing.T) {
 	rawInt := "123"
 

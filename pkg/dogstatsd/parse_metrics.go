@@ -30,7 +30,7 @@ var (
 
 type dogstatsdMetricSample struct {
 	name       string
-	value      float64
+	values     []float64
 	setValue   string
 	metricType metricType
 	sampleRate float64
@@ -105,13 +105,13 @@ func (p *parser) parseMetricSample(message []byte) (dogstatsdMetricSample, error
 	}
 
 	var setValue []byte
-	var value float64
+	var values []float64
 	if metricType == setType {
 		setValue = rawValue
 	} else {
-		value, err = parseFloat64(rawValue)
+		values, err = parseFloat64List(rawValue)
 		if err != nil {
-			return dogstatsdMetricSample{}, fmt.Errorf("could not parse dogstatsd metric value: %v", err)
+			return dogstatsdMetricSample{}, fmt.Errorf("could not parse dogstatsd metric values: %v", err)
 		}
 	}
 
@@ -132,7 +132,7 @@ func (p *parser) parseMetricSample(message []byte) (dogstatsdMetricSample, error
 
 	return dogstatsdMetricSample{
 		name:       p.interner.LoadOrStore(name),
-		value:      value,
+		values:     values,
 		setValue:   string(setValue),
 		metricType: metricType,
 		sampleRate: sampleRate,
