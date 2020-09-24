@@ -1011,6 +1011,12 @@ api_key:
 #
 # dogstatsd_socket: ""
 
+## @param dogstatsd_telemetry_endpoint - string - optional - default: ""
+## Listen to an extra socket to receive telemetry from clients. Use
+## "unix://<path_to_socket>" for UDS and "<port_numer>" for UDP.
+#
+# dogstatsd_telemetry_endpoint: ""
+
 ## @param dogstatsd_origin_detection - boolean - optional - default: false
 ## When using Unix Socket, DogStatsD can tag metrics with container metadata.
 ## If running DogStatsD in a container, host PID mode (e.g. with --pid=host) is required.

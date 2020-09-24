@@ -346,6 +346,7 @@ func InitConfig(config Config) {
 	// Sends Dogstatsd parse errors to the Debug level instead of the Error level
 	config.BindEnvAndSetDefault("dogstatsd_disable_verbose_logs", false)
 	config.SetKnown("dogstatsd_mapper_profiles")
+	config.BindEnvAndSetDefault("dogstatsd_telemetry_endpoint", "")
 
 	config.BindEnvAndSetDefault("statsd_forward_host", "")
 	config.BindEnvAndSetDefault("statsd_forward_port", 0)
