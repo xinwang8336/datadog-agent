@@ -11,10 +11,12 @@ import (
 	"bytes"
 	"context"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
 	"path"
+	"strings"
 	"syscall"
 	"testing"
 	"text/template"
@@ -84,6 +86,11 @@ rules:
 `
 
 var testEnvironment string
+
+const (
+	HostEnvironment   = "host"
+	DockerEnvironment = "docker"
+)
 
 type testEvent struct {
 	event eval.Event
@@ -457,8 +464,23 @@ func newSimpleTest(macros []*rules.MacroDefinition, rules []*rules.RuleDefinitio
 	return t, nil
 }
 
+func testContainerPath(t *testing.T, event *sprobe.Event, eventType eval.EventType) {
+	if testEnvironment != DockerEnvironment {
+		return
+	}
+
+	path, err := event.GetFieldValue(fmt.Sprintf("%s.container_path", eventType))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(path.(string), "docker") {
+		t.Errorf("incorrect container_path, should contain `docker`: %s", path)
+	}
+}
+
 func TestEnv(t *testing.T) {
-	if testEnvironment != "" && testEnvironment != "host" && testEnvironment != "docker" {
+	if testEnvironment != "" && testEnvironment != HostEnvironment && testEnvironment != DockerEnvironment {
 		t.Fatal("invalid environment")
 	}
 }
@@ -468,5 +490,5 @@ func TestMain(m *testing.M) {
 }
 
 func init() {
-	flag.StringVar(&testEnvironment, "env", "", "environment used to run the test suite: ex: host, docker")
+	flag.StringVar(&testEnvironment, "env", HostEnvironment, "environment used to run the test suite: ex: host, docker")
 }
