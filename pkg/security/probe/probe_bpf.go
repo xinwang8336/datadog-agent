@@ -317,6 +317,7 @@ func (p *Probe) handleEvent(data []byte) {
 			log.Errorf("failed to decode mount event: %s (offset %d, len %d)", err, offset, len(data))
 			return
 		}
+
 		// Resolve mount point
 		event.Mount.ResolveMountPoint(p.resolvers)
 		// Resolve root
