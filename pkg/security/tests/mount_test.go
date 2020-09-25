@@ -64,7 +64,7 @@ func TestMount(t *testing.T) {
 		if fs := event.Mount.FSType; fs != "bind" {
 			t.Errorf("expected a bind mount, got %v", fs)
 		}
-		mntID = event.Mount.NewMountID
+		mntID = event.Mount.MountID
 	}
 
 	// Test umount
