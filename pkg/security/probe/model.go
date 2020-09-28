@@ -140,7 +140,7 @@ type FileEvent struct {
 func (e *FileEvent) ResolveInode(resolvers *Resolvers) string {
 	if len(e.PathnameStr) == 0 {
 		e.PathnameStr = resolvers.DentryResolver.Resolve(e.MountID, e.Inode)
-		_, mountPath, rootPath, err := resolvers.MountResolver.GetMountPath(e.MountID, e.OverlayNumLower)
+		_, mountPath, rootPath, err := resolvers.MountResolver.GetMountPath(e.MountID)
 		if err == nil {
 			if strings.HasPrefix(e.PathnameStr, rootPath) && rootPath != "/" {
 				e.PathnameStr = strings.Replace(e.PathnameStr, rootPath, "", 1)
@@ -154,7 +154,7 @@ func (e *FileEvent) ResolveInode(resolvers *Resolvers) string {
 // ResolveContainerPath resolves the inode to a path relative to the container
 func (e *FileEvent) ResolveContainerPath(resolvers *Resolvers) string {
 	if len(e.ContainerPath) == 0 {
-		containerPath, _, _, err := resolvers.MountResolver.GetMountPath(e.MountID, e.OverlayNumLower)
+		containerPath, _, _, err := resolvers.MountResolver.GetMountPath(e.MountID)
 		if err == nil {
 			e.ContainerPath = containerPath
 		}
