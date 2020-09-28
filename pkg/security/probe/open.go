@@ -59,6 +59,7 @@ var openHookPoints = []*HookPoint{
 			ExitFunc: "kretprobe/ovl_d_real",
 		}},
 		EventTypes: []eval.EventType{"open"},
+		Optional:   true,
 	},
 	{
 		Name:       "sys_openat",

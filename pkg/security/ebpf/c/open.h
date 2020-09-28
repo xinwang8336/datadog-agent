@@ -209,6 +209,9 @@ int __attribute__((always_inline)) handle_open_event(struct pt_regs *ctx, struct
     struct file *file = (struct file *)PT_REGS_PARM1(ctx);
     struct inode *inode = (struct inode *)PT_REGS_PARM2(ctx);
 
+    if (syscall->open.dentry)
+        return 0;
+
     syscall->open.dentry = get_file_dentry(file);
     syscall->open.path_key = get_inode_key_path(inode, &file->f_path);
 
@@ -221,14 +224,12 @@ int kprobe__vfs_truncate(struct pt_regs *ctx) {
     if (!syscall)
         return 0;
 
-    if (syscall->type == SYSCALL_OPEN) {
-        struct path *path = (struct path *)PT_REGS_PARM1(ctx);
+    struct path *path = (struct path *)PT_REGS_PARM1(ctx);
 
-        syscall->open.dentry = get_path_dentry(path);
-        syscall->open.path_key = get_key(syscall->open.dentry, path);
+    syscall->open.dentry = get_path_dentry(path);
+    syscall->open.path_key = get_key(syscall->open.dentry, path);
 
-        return filter_open(syscall);
-    }
+    return filter_open(syscall);
 
     return 0;
 }
@@ -239,10 +240,8 @@ int kretprobe__ovl_d_real(struct pt_regs *ctx) {
     if (!syscall)
         return 0;
 
-    if (syscall->type == SYSCALL_OPEN) {
-        struct dentry *dentry = (struct dentry *)PT_REGS_RC(ctx);
-        syscall->open.path_key.ino = get_dentry_ino(dentry);
-    }
+    struct dentry *dentry = (struct dentry *)PT_REGS_RC(ctx);
+    syscall->open.path_key.ino = get_dentry_ino(dentry);
 
     return 0;
 }
