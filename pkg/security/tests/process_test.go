@@ -18,10 +18,7 @@ import (
 )
 
 func TestProcess(t *testing.T) {
-	currentUser, err := user.Current()
-	if err != nil {
-		t.Fatal(err)
-	}
+	currentUser, _ := user.Current()
 
 	executable, err := os.Executable()
 	if err != nil {
