@@ -432,7 +432,7 @@ func (p *Probe) RegisterKProbe(kprobe *ebpf.KProbe) error {
 	if err == nil {
 		log.Infof("kProbe `%s` registered", kprobe.Name)
 	} else {
-		log.Errorf("failed to register kProbe `%s`", kprobe.Name)
+		log.Errorf("failed to register kProbe `%s`: %s", kprobe.Name, err)
 	}
 
 	return err
