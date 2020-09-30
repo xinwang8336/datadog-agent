@@ -21,7 +21,7 @@ var openTables = []string{
 	"open_basename_approvers",
 	"open_flags_approvers",
 	"open_flags_discarders",
-	"open_path_inode_discarders",
+	"open_inode_discarders",
 	"open_process_discarders",
 }
 
@@ -100,7 +100,7 @@ func openOnNewDiscarder(rs *rules.RuleSet, event *Event, probe *Probe, discarder
 		}
 
 		fsEvent := event.Open
-		table := "open_path_inode_discarders"
+		table := "open_inode_discarders"
 
 		isDiscarded, err := discardParentInode(probe, rs, "open", filename, fsEvent.MountID, fsEvent.Inode, table)
 		if !isDiscarded {
