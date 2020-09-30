@@ -569,7 +569,7 @@ func (p *Probe) RegisterTracepoint(tracepoint string) error {
 	if err == nil {
 		log.Infof("tracepoint `%s` registered", tracepoint)
 	} else {
-		log.Errorf("failed to register tracepoint `%s`", tracepoint)
+		log.Errorf("failed to register tracepoint `%s`: %s", tracepoint, err)
 	}
 	return err
 }

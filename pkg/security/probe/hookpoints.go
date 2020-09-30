@@ -255,5 +255,5 @@ func init() {
 	allHookPoints = append(allHookPoints, openHookPoints...)
 	allHookPoints = append(allHookPoints, mountHookPoints...)
 	allHookPoints = append(allHookPoints, execHookPoints...)
-	allHookPoints = append(allHookPoints, UnlinkHookPoints...)
+	allHookPoints = append(allHookPoints, unlinkHookPoints...)
 }

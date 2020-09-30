@@ -142,25 +142,6 @@ int __attribute__((always_inline)) discard_by_flags(struct syscall_cache_t *sysc
     return 0;
 }
 
-int __attribute__((always_inline)) approve_by_process_inode(struct syscall_cache_t *syscall) {
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-    u32 tgid = pid_tgid >> 32;
-
-    struct proc_cache_t *proc = get_pid_cache(tgid);
-    if (!proc) {
-        return 0;
-    }
-    u64 inode = proc->executable.inode;
-    struct filter_t *filter = bpf_map_lookup_elem(&open_process_inode_approvers, &inode);
-    if (filter) {
-#ifdef DEBUG
-        bpf_printk("kprobe/vfs_open pid %d with inode %d approved\n", tgid, inode);
-#endif
-        return 1;
-    }
-    return 0;
-}
-
 int __attribute__((always_inline)) filter_open(struct syscall_cache_t *syscall) {
     if (syscall->policy.mode == NO_FILTER)
         return 0;
@@ -210,7 +191,7 @@ int kprobe__vfs_truncate(struct pt_regs *ctx) {
     struct path *path = (struct path *)PT_REGS_PARM1(ctx);
 
     syscall->open.dentry = get_path_dentry(path);
-    syscall->open.path_key = get_key(syscall->open.dentry, path);
+    syscall->open.path_key = get_dentry_key_path(syscall->open.dentry, path);
 
     return filter_open(syscall);
 

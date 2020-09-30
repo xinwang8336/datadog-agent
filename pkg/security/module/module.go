@@ -78,7 +78,7 @@ func (m *Module) Register(httpMux *http.ServeMux) error {
 
 	report, err := rsa.Apply(m.ruleSet, m.probe)
 	if err != nil {
-		log.Warn(err)
+		log.Errorf("error while applying the rules: %s", err)
 	}
 
 	// now that the probes have started, run the snapshot functions for the probes that require

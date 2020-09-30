@@ -12,8 +12,10 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/security/secl/eval"
 )
 
-// UnlinkHookPoints list of unlink's kProbes
-var UnlinkHookPoints = []*HookPoint{
+var unklinkCapabilities = Capabilities{}
+
+// unlinkHookPoints list of unlink's kProbes
+var unlinkHookPoints = []*HookPoint{
 	{
 		Name: "vfs_unlink",
 		KProbes: []*ebpf.KProbe{{

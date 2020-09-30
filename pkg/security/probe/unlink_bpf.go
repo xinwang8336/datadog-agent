@@ -40,7 +40,7 @@ func unlinkOnNewDiscarder(rs *rules.RuleSet, event *Event, probe *Probe, discard
 		fsEvent := event.Unlink
 		table := "unlink_path_inode_discarders"
 
-		_, err := discardParentInode(probe, rs, "unlink", filename, fsEvent.MountID, fsEvent.Inode, table)
+		_, err = discardParentInode(probe, rs, "unlink", filename, fsEvent.MountID, fsEvent.Inode, table)
 		return err
 	}
 	return &ErrDiscarderNotSupported{Field: field}
