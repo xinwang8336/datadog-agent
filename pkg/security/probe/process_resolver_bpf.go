@@ -8,7 +8,6 @@
 package probe
 
 import (
-	"fmt"
 	"os"
 	"syscall"
 	"time"
@@ -47,7 +46,7 @@ type ProcessResolver struct {
 	inodeInfoMap *ebpf.Table
 	procCacheMap *ebpf.Table
 	pidCookieMap *ebpf.Table
-	entryCache   map[uint32]*ProcessResolverEntry
+	entryCache   map[uint32]*ProcessCacheEntry
 }
 
 // UnmarshalBinary unmarshals a binary representation of itself
@@ -61,7 +60,16 @@ func (i *InodeInfo) UnmarshalBinary(data []byte) (int, error) {
 }
 
 // AddEntry add an entry to the local cache
-func (p *ProcessResolver) AddEntry(pid uint32, entry *ProcessResolverEntry) {
+func (p *ProcessResolver) AddEntry(pid uint32, entry *ProcessCacheEntry) {
+	// resolve now, so that the dentry cache is up to date
+	entry.FileEvent.ResolveInode(p.resolvers)
+	entry.FileEvent.ResolveContainerPath(p.resolvers)
+	entry.ContainerEvent.ResolveContainerID(p.resolvers)
+
+	if entry.Timestamp.IsZero() {
+		entry.Timestamp = p.resolvers.TimeResolver.ResolveMonotonicTimestamp(entry.TimestampRaw)
+	}
+
 	p.entryCache[pid] = entry
 }
 
@@ -75,7 +83,7 @@ func (p *ProcessResolver) DelEntry(pid uint32) {
 	p.pidCookieMap.Delete(pidb)
 }
 
-func (p *ProcessResolver) resolve(pid uint32) *ProcessResolverEntry {
+func (p *ProcessResolver) resolve(pid uint32) *ProcessCacheEntry {
 	pidb := make([]byte, 4)
 	byteOrder.PutUint32(pidb, pid)
 
@@ -89,39 +97,30 @@ func (p *ProcessResolver) resolve(pid uint32) *ProcessResolverEntry {
 		return nil
 	}
 
-	var procCacheEntry ProcCacheEntry
-	if _, err := procCacheEntry.UnmarshalBinary(entryb); err != nil {
+	var entry ProcessCacheEntry
+	if _, err := entry.UnmarshalBinary(entryb); err != nil {
 		return nil
 	}
 
-	/*	pathnameStr := procCacheEntry.FileEvent.ResolveInode(p.resolvers)
-		if pathnameStr == dentryPathKeyNotFound {
-			return nil
-		}*/
+	p.AddEntry(pid, &entry)
 
-	timestamp := p.resolvers.TimeResolver.ResolveMonotonicTimestamp(procCacheEntry.TimestampRaw)
-
-	entry := &ProcessResolverEntry{
-		//PathnameStr: pathnameStr,
-		Timestamp: timestamp,
-	}
-	p.AddEntry(pid, entry)
-
-	return entry
+	return &entry
 }
 
 // Resolve returns the cache entry for the given pid
-func (p *ProcessResolver) Resolve(pid uint32) *ProcessResolverEntry {
+func (p *ProcessResolver) Resolve(pid uint32) *ProcessCacheEntry {
 	entry, ok := p.entryCache[pid]
 	if ok {
 		return entry
 	}
 
+	return nil
+
 	// fallback request the map directly, the perf event should be delayed
 	return p.resolve(pid)
 }
 
-func (p *ProcessResolver) Get(pid uint32) *ProcessResolverEntry {
+func (p *ProcessResolver) Get(pid uint32) *ProcessCacheEntry {
 	return p.entryCache[pid]
 }
 
@@ -244,7 +243,7 @@ func (p *ProcessResolver) snapshotProcess(proc *process.FilledProcess) bool {
 	}
 
 	// preset and add the entry to the cache
-	entry := &ProcessResolverEntry{
+	entry := &ProcessCacheEntry{
 		FileEvent: FileEvent{
 			Inode:           inode,
 			OverlayNumLower: info.OverlayNumLower,
@@ -255,10 +254,6 @@ func (p *ProcessResolver) snapshotProcess(proc *process.FilledProcess) bool {
 			ID: string(containerID),
 		},
 		Timestamp: timestamp,
-	}
-	entry.FileEvent.ResolveContainerPath(p.resolvers)
-	if pid == 20913 {
-		fmt.Printf("KKKKKKKKKKKKK: %+v\n", entry.FileEvent)
 	}
 
 	p.AddEntry(pid, entry)
@@ -289,13 +284,13 @@ func (p *ProcessResolver) Snapshot() error {
 	}
 
 	// Deregister probes
-	/*defer func() {
+	defer func() {
 		for _, kp := range processSnapshotProbes {
 			if err := p.probe.Module.UnregisterKprobe(kp); err != nil {
 				log.Debugf("couldn't unregister kprobe %s: %v", kp.Name, err)
 			}
 		}
-	}()*/
+	}()
 
 	for retry := 0; retry < 5; retry++ {
 		if err := p.snapshot(); err == nil {
@@ -311,6 +306,6 @@ func NewProcessResolver(probe *Probe, resolvers *Resolvers) (*ProcessResolver, e
 	return &ProcessResolver{
 		probe:      probe,
 		resolvers:  resolvers,
-		entryCache: make(map[uint32]*ProcessResolverEntry),
+		entryCache: make(map[uint32]*ProcessCacheEntry),
 	}, nil
 }

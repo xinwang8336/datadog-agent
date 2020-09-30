@@ -29,10 +29,6 @@ int kprobe__getattr(struct pt_regs *ctx) {
         .overlay_numlower = overlay_numlower,
     };
 
-    if (inode == 2567798) {
-        bpf_printk("MOUNTID: %d\n", mount_id);
-    }
-
     // vfs_getattr might be called multiple times on overlay filesystem, we only care about the first call
     int *current_entry = bpf_map_lookup_elem(&inode_info_cache, &inode);
     if (!current_entry) {
