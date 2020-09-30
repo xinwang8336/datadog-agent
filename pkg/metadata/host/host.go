@@ -60,6 +60,7 @@ func GetPayload(hostnameData util.HostnameData) *Payload {
 		NetworkMeta:   getNetworkMeta(),
 		LogsMeta:      getLogsMeta(),
 		InstallMethod: getInstallMethod(getInstallInfoPath()),
+		OtelVersion:   "test-from-agent",
 	}
 
 	// Cache the metadata for use in other payloads

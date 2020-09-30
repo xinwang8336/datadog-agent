@@ -63,4 +63,5 @@ type Payload struct {
 	NetworkMeta   *NetworkMeta      `json:"network"`
 	LogsMeta      *LogsMeta         `json:"logs"`
 	InstallMethod *InstallMethod    `json:"install-method"`
+	OtelVersion   string            `json:"otel_version"`
 }
