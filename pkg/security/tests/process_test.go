@@ -52,7 +52,7 @@ func TestProcess(t *testing.T) {
 	}
 }
 
-func TestProcessFilename(t *testing.T) {
+func TestProcessContext(t *testing.T) {
 	ruleDef := &rules.RuleDefinition{
 		ID:         "test_rule",
 		Expression: fmt.Sprintf(`open.filename == "/etc/hosts"`),
@@ -64,6 +64,11 @@ func TestProcessFilename(t *testing.T) {
 	}
 	defer test.Close()
 
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	f, err := os.Open("/etc/hosts")
 	if err != nil {
 		t.Fatal(err)
@@ -74,8 +79,14 @@ func TestProcessFilename(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	} else {
-		if filename, _ := event.GetFieldValue("process.filename"); filename == "" {
-			t.Error("should get a valid filename")
+		if filename, _ := event.GetFieldValue("process.filename"); filename.(string) != executable {
+			t.Errorf("not able to find the proper process filename `%v`vs `%s`", filename, executable)
 		}
+
+		if inode := getInode(t, executable); inode != event.Process.Inode {
+			t.Errorf("expected inode %d, got %d", event.Process.Inode, inode)
+		}
+
+		testContainerPath(t, event, "process.container_path")
 	}
 }

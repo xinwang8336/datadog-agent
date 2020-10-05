@@ -114,8 +114,6 @@ func (p *ProcessResolver) Resolve(pid uint32) *ProcessCacheEntry {
 		return entry
 	}
 
-	return nil
-
 	// fallback request the map directly, the perf event should be delayed
 	return p.resolve(pid)
 }
