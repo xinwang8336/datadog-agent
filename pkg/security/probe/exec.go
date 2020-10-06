@@ -37,7 +37,7 @@ var execHookPoints = []*HookPoint{
 	{
 		Name: "do_exit",
 		KProbes: []*ebpf.KProbe{{
-			ExitFunc: "kprobe/do_exit",
+			EntryFunc: "kprobe/do_exit",
 		}},
 		EventTypes: []eval.EventType{"*"},
 	},
@@ -72,5 +72,19 @@ var execHookPoints = []*HookPoint{
 		}},
 		EventTypes: []eval.EventType{"*"},
 		Optional:   true,
+	},
+	{
+		Name: "exit_itimers",
+		KProbes: []*ebpf.KProbe{{
+			EntryFunc: "kprobe/exit_itimers",
+		}},
+		EventTypes: []eval.EventType{"*"},
+	},
+	{
+		Name: "do_close_on_exec",
+		KProbes: []*ebpf.KProbe{{
+			EntryFunc: "kprobe/do_close_on_exec",
+		}},
+		EventTypes: []eval.EventType{"*"},
 	},
 }
