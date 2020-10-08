@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -174,5 +175,11 @@ func startCompliance(hostname string, endpoints *config.Endpoints, context *clie
 	stopper.Add(agent)
 
 	log.Infof("Running compliance checks every %s", checkInterval.String())
+
+	// Send the compliance 'running' metrics periodically
+	ticker := time.NewTicker(15 * time.Second)
+	go sendRunningMetrics("compliance", ticker)
+	stopper.Add(ticker)
+
 	return nil
 }

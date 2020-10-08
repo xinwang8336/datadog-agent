@@ -10,6 +10,7 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -128,6 +129,11 @@ func startRuntimeSecurity(hostname string, endpoints *config.Endpoints, context 
 	stopper.Add(agent)
 
 	log.Info("Datadog runtime security agent is now running")
+
+	// Send the runtime 'running' metrics periodically
+	ticker := time.NewTicker(15 * time.Second)
+	go sendRunningMetrics("runtime", ticker)
+	stopper.Add(ticker)
 
 	return agent, nil
 }
