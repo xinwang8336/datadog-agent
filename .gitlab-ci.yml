@@ -3957,7 +3957,7 @@ tag_release_7_linux_google_container_registry:
     - VERSION=$(inv -e agent.version --major-version 7)
     - inv -e docker.publish-bulk --platform linux/amd64 --platform linux/arm64 --src-template ${SRC_AGENT}:${SRC_TAG}-7-ARCH      --dst-template gcr.io/datadoghq/agent-ARCH:${VERSION}
     - inv -e docker.publish-bulk --platform linux/amd64 --platform linux/arm64 --src-template ${SRC_AGENT}:${SRC_TAG}-7-jmx-ARCH  --dst-template gcr.io/datadoghq/agent-ARCH:${VERSION}-jmx
-    - inv -e docker.publish ${SRC_DSD}:${SRC_TAG}-amd64 datadog/dogstatsd:${VERSION}
+    - inv -e docker.publish ${SRC_DSD}:${SRC_TAG}-amd64 gcr.io/datadoghq/dogstatsd:${VERSION}
 
 tag_release_7_windows:
   rules:
