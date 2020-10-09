@@ -4069,8 +4069,8 @@ latest_release_7:
 latest_release_7_google_container_registry:
   rules:
     - <<: *if_deploy_on_tag_7
-        when: manual
-        allow_failure: true
+      when: manual
+      allow_failure: true
   <<: *google_container_registry_tag_job_definition
   stage: deploy7
   dependencies:
