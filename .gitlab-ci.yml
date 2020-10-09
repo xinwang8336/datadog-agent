@@ -4066,6 +4066,38 @@ latest_release_7:
       --image datadog/agent-amd64:${VERSION}-jmx-win1909,windows/amd64
       --image datadog/agent-arm64:${VERSION}-jmx,linux/arm64
 
+latest_release_7_google_container_registry:
+  rules:
+    - <<: *if_deploy_on_tag_7
+        when: manual
+        allow_failure: true
+  <<: *google_container_registry_tag_job_definition
+  stage: deploy7
+  dependencies:
+    - docker_build_agent7
+    - docker_build_agent7_arm64
+    - docker_build_agent7_jmx
+    - docker_build_agent7_jmx_arm64
+    - docker_build_dogstatsd_amd64
+  script:
+    - VERSION=$(inv -e agent.version --major-version 7)
+    # Dogstatsd
+    - inv -e docker.publish ${SRC_DSD}:${SRC_TAG}-amd64 gcr.io/datadoghq/dogstatsd:latest
+    - inv -e docker.publish ${SRC_DSD}:${SRC_TAG}-amd64 gcr.io/datadoghq/dogstatsd:7
+    # Manifests
+    - inv -e docker.publish-manifest --signed-push --name gcr.io/datadoghq/agent --tag latest
+      --image gcr.io/datadoghq/agent-amd64:${VERSION},linux/amd64
+      --image gcr.io/datadoghq/agent-arm64:${VERSION},linux/arm64
+    - inv -e docker.publish-manifest --signed-push --name gcr.io/datadoghq/agent --tag latest-jmx
+      --image gcr.io/datadoghq/agent-amd64:${VERSION}-jmx,linux/amd64
+      --image gcr.io/datadoghq/agent-arm64:${VERSION}-jmx,linux/arm64
+    - inv -e docker.publish-manifest --signed-push --name gcr.io/datadoghq/agent --tag 7
+      --image gcr.io/datadoghq/agent-amd64:${VERSION},linux/amd64
+      --image gcr.io/datadoghq/agent-arm64:${VERSION},linux/arm64
+    - inv -e docker.publish-manifest --signed-push --name gcr.io/datadoghq/agent --tag 7-jmx
+      --image gcr.io/datadoghq/agent-amd64:${VERSION}-jmx,linux/amd64
+      --image gcr.io/datadoghq/agent-arm64:${VERSION}-jmx,linux/arm64
+
 #
 # Use these steps to revert the latest tags to a previous release
 # while maintaining content trust signatures
@@ -4278,54 +4310,54 @@ pupernetes-tags-7:
   - VERSION=$(inv -e agent.version --major-version 7)
   - inv -e e2e-tests --image=datadog/agent:${VERSION}
 
-notify-on-success:
-  extends: .slack-notifier-base
-  rules:
-    - <<: *if_master_branch
-    - <<: *if_deploy
-  script: |
-    COMMIT_URL="$CI_PROJECT_URL/commit/$CI_COMMIT_SHA"
+# notify-on-success:
+#   extends: .slack-notifier-base
+#   rules:
+#     - <<: *if_master_branch
+#     - <<: *if_deploy
+#   script: |
+#     COMMIT_URL="$CI_PROJECT_URL/commit/$CI_COMMIT_SHA"
 
-    AUTHOR=$(git show -s --format="%an" HEAD)
+#     AUTHOR=$(git show -s --format="%an" HEAD)
 
-    if [ "$DEPLOY_AGENT" = "true" ]; then
-      MESSAGE_TEXT=":host-green: :rocket: Deploy pipeline <$CI_PIPELINE_URL|$CI_PIPELINE_ID> for $CI_COMMIT_REF_NAME succeeded.
-      $CI_COMMIT_TITLE (<$COMMIT_URL|$CI_COMMIT_SHORT_SHA>) by $AUTHOR"
-    else
-      MESSAGE_TEXT=":host-green: :merged: Merge pipeline <$CI_PIPELINE_URL|$CI_PIPELINE_ID> for $CI_COMMIT_REF_NAME succeeded.
-      $CI_COMMIT_TITLE (<$COMMIT_URL|$CI_COMMIT_SHORT_SHA>) by $AUTHOR"
-    fi
-    postmessage "#datadog-agent-pipelines" "$MESSAGE_TEXT"
+#     if [ "$DEPLOY_AGENT" = "true" ]; then
+#       MESSAGE_TEXT=":host-green: :rocket: Deploy pipeline <$CI_PIPELINE_URL|$CI_PIPELINE_ID> for $CI_COMMIT_REF_NAME succeeded.
+#       $CI_COMMIT_TITLE (<$COMMIT_URL|$CI_COMMIT_SHORT_SHA>) by $AUTHOR"
+#     else
+#       MESSAGE_TEXT=":host-green: :merged: Merge pipeline <$CI_PIPELINE_URL|$CI_PIPELINE_ID> for $CI_COMMIT_REF_NAME succeeded.
+#       $CI_COMMIT_TITLE (<$COMMIT_URL|$CI_COMMIT_SHORT_SHA>) by $AUTHOR"
+#     fi
+#     postmessage "#datadog-agent-pipelines" "$MESSAGE_TEXT"
 
-notify-on-tagged-success:
-  extends: .slack-notifier-base
-  rules:
-    - <<: *if_deploy_on_tag_6
-    - <<: *if_deploy_on_tag_7
-  script: |
-    MESSAGE_TEXT=":host-green: Tagged build <$CI_PIPELINE_URL|$CI_PIPELINE_ID> succeeded.
-    *$CI_COMMIT_REF_NAME* is available in the staging repositories.
-    Don't forget to run the \`tag_release_*\` jobs to publish the docker images."
-    postmessage "#agent-release-sync" "$MESSAGE_TEXT"
+# notify-on-tagged-success:
+#   extends: .slack-notifier-base
+#   rules:
+#     - <<: *if_deploy_on_tag_6
+#     - <<: *if_deploy_on_tag_7
+#   script: |
+#     MESSAGE_TEXT=":host-green: Tagged build <$CI_PIPELINE_URL|$CI_PIPELINE_ID> succeeded.
+#     *$CI_COMMIT_REF_NAME* is available in the staging repositories.
+#     Don't forget to run the \`tag_release_*\` jobs to publish the docker images."
+#     postmessage "#agent-release-sync" "$MESSAGE_TEXT"
 
-notify-on-failure:
-  extends: .slack-notifier-base
-  rules:
-    - <<: *if_master_branch
-      when: on_failure
-    - <<: *if_deploy
-      when: on_failure
-  dependencies: []
-  script: |
-    COMMIT_URL="$CI_PROJECT_URL/commit/$CI_COMMIT_SHA"
+# notify-on-failure:
+#   extends: .slack-notifier-base
+#   rules:
+#     - <<: *if_master_branch
+#       when: on_failure
+#     - <<: *if_deploy
+#       when: on_failure
+#   dependencies: []
+#   script: |
+#     COMMIT_URL="$CI_PROJECT_URL/commit/$CI_COMMIT_SHA"
 
-    AUTHOR=$(git show -s --format="%an" HEAD)
+#     AUTHOR=$(git show -s --format="%an" HEAD)
 
-    if [ "$DEPLOY_AGENT" = "true" ]; then
-      MESSAGE_TEXT=":host-red: :rocket: Deploy pipeline <$CI_PIPELINE_URL|$CI_PIPELINE_ID> for $CI_COMMIT_REF_NAME failed.
-      $CI_COMMIT_TITLE (<$COMMIT_URL|$CI_COMMIT_SHORT_SHA>) by $AUTHOR"
-    else
-      MESSAGE_TEXT=":host-red: :merged: Merge pipeline <$CI_PIPELINE_URL|$CI_PIPELINE_ID> for $CI_COMMIT_REF_NAME failed.
-      $CI_COMMIT_TITLE (<$COMMIT_URL|$CI_COMMIT_SHORT_SHA>) by $AUTHOR"
-    fi
-    postmessage "#datadog-agent-pipelines" "$MESSAGE_TEXT"
+#     if [ "$DEPLOY_AGENT" = "true" ]; then
+#       MESSAGE_TEXT=":host-red: :rocket: Deploy pipeline <$CI_PIPELINE_URL|$CI_PIPELINE_ID> for $CI_COMMIT_REF_NAME failed.
+#       $CI_COMMIT_TITLE (<$COMMIT_URL|$CI_COMMIT_SHORT_SHA>) by $AUTHOR"
+#     else
+#       MESSAGE_TEXT=":host-red: :merged: Merge pipeline <$CI_PIPELINE_URL|$CI_PIPELINE_ID> for $CI_COMMIT_REF_NAME failed.
+#       $CI_COMMIT_TITLE (<$COMMIT_URL|$CI_COMMIT_SHORT_SHA>) by $AUTHOR"
+#     fi
+#     postmessage "#datadog-agent-pipelines" "$MESSAGE_TEXT"
