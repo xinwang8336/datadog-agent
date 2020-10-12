@@ -36,6 +36,10 @@ func AllProbes() []*manager.Probe {
 			UID:     SecurityAgentUID,
 			Section: "tracepoint/raw_syscalls/sys_enter",
 		},
+		&manager.Probe{
+			UID:     SecurityAgentUID,
+			Section: "tracepoint/sched/sched_process_exec",
+		},
 		// Snapshot probe
 		&manager.Probe{
 			UID:     SecurityAgentUID,

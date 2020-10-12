@@ -80,9 +80,11 @@ func NewRuntimeSecurityManager() *manager.Manager {
 			// Mount tables
 			{Name: "mount_id_offset"},
 			// Syscall monitor tables
-			{Name: "noisy_processes_buffer"},
+			{Name: "buffer_selector"},
 			{Name: "noisy_processes_fb"},
 			{Name: "noisy_processes_bb"},
+			{Name: "exec_count_one"},
+			{Name: "exec_count_two"},
 		},
 
 		PerfMaps: []*manager.PerfMap{
