@@ -30,11 +30,18 @@ func AllProbes() []*manager.Probe {
 	allProbes = append(allProbes, getUnlinkProbes()...)
 	allProbes = append(allProbes, getXattrProbes()...)
 
-	// Syscall monitor
-	allProbes = append(allProbes, &manager.Probe{
-		UID:     SecurityAgentUID,
-		Section: "tracepoint/raw_syscalls/sys_enter",
-	})
+	allProbes = append(allProbes,
+		// Syscall monitor
+		&manager.Probe{
+			UID:     SecurityAgentUID,
+			Section: "tracepoint/raw_syscalls/sys_enter",
+		},
+		// Snapshot probe
+		&manager.Probe{
+			UID:     SecurityAgentUID,
+			Section: "kprobe/security_inode_getattr",
+		},
+	)
 
 	return allProbes
 }

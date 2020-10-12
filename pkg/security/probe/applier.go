@@ -114,7 +114,7 @@ func (rsa *RuleSetApplier) setupFilters(rs *rules.RuleSet, eventType eval.EventT
 
 // GetPolicyReport returns the policy report for the loaded set of rules.
 func (rsa *RuleSetApplier) GetPolicyReport(rs *rules.RuleSet, applier Applier) (*Report, error) {
-	for eventType, _ := range probes.SelectorsPerEventType {
+	for eventType := range probes.SelectorsPerEventType {
 		if rs.HasRulesForEventType(eventType) {
 			if err := rsa.setupFilters(rs, eventType, applier); err != nil {
 				return nil, err

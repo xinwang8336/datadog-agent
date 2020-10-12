@@ -15,10 +15,6 @@ var attrProbes = []*manager.Probe{
 		UID:     SecurityAgentUID,
 		Section: "kprobe/security_inode_setattr",
 	},
-	{
-		UID:     SecurityAgentUID,
-		Section: "kprobe/vfs_getattr",
-	},
 }
 
 func getAttrProbes() []*manager.Probe {
