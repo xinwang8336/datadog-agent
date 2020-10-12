@@ -10,6 +10,7 @@ package ebpf
 import (
 	"math"
 	"os"
+	"time"
 
 	"github.com/DataDog/ebpf"
 	"github.com/DataDog/ebpf/manager"
@@ -26,6 +27,10 @@ func NewDefaultOptions() manager.Options {
 
 		// DefaultPerfRingBufferSize is the default buffer size of the perf buffers
 		DefaultPerfRingBufferSize: 128 * os.Getpagesize(),
+
+		// DefaultProbeAttach is the default number of attach / detach retries on error
+		DefaultProbeRetry:      3,
+		DefaultProbeRetryDelay: time.Second,
 
 		VerifierOptions: ebpf.CollectionOptions{
 			Programs: ebpf.ProgramOptions{
