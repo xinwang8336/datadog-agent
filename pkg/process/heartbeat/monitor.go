@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-// MetricName is used to determine the metric name for a given module
+// MetricName is used to determine the metric name for a given system-probe module
 func MetricName(moduleName string) string {
 	return fmt.Sprintf("datadog.system_probe.agent.%s", moduleName)
 }
