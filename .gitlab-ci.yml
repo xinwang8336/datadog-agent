@@ -4085,16 +4085,16 @@ latest_release_7_google_container_registry:
     - inv -e docker.publish ${SRC_DSD}:${SRC_TAG}-amd64 gcr.io/datadoghq/dogstatsd:latest
     - inv -e docker.publish ${SRC_DSD}:${SRC_TAG}-amd64 gcr.io/datadoghq/dogstatsd:7
     # Manifests
-    - inv -e docker.publish-manifest --signed-push --name gcr.io/datadoghq/agent --tag latest
+    - inv -e docker.publish-manifest --name gcr.io/datadoghq/agent --tag latest
       --image gcr.io/datadoghq/agent-amd64:${VERSION},linux/amd64
       --image gcr.io/datadoghq/agent-arm64:${VERSION},linux/arm64
-    - inv -e docker.publish-manifest --signed-push --name gcr.io/datadoghq/agent --tag latest-jmx
+    - inv -e docker.publish-manifest --name gcr.io/datadoghq/agent --tag latest-jmx
       --image gcr.io/datadoghq/agent-amd64:${VERSION}-jmx,linux/amd64
       --image gcr.io/datadoghq/agent-arm64:${VERSION}-jmx,linux/arm64
-    - inv -e docker.publish-manifest --signed-push --name gcr.io/datadoghq/agent --tag 7
+    - inv -e docker.publish-manifest --name gcr.io/datadoghq/agent --tag 7
       --image gcr.io/datadoghq/agent-amd64:${VERSION},linux/amd64
       --image gcr.io/datadoghq/agent-arm64:${VERSION},linux/arm64
-    - inv -e docker.publish-manifest --signed-push --name gcr.io/datadoghq/agent --tag 7-jmx
+    - inv -e docker.publish-manifest --name gcr.io/datadoghq/agent --tag 7-jmx
       --image gcr.io/datadoghq/agent-amd64:${VERSION}-jmx,linux/amd64
       --image gcr.io/datadoghq/agent-arm64:${VERSION}-jmx,linux/arm64
 
