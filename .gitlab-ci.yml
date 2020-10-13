@@ -3045,7 +3045,7 @@ twistlock_scan-7:
 .google_container_registry_tag_job_definition: &google_container_registry_tag_job_definition
   stage: image_deploy
   tags: [ "runner:docker", "size:large" ]
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:1.5.0
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-push:1.5.1
   variables:
     <<: *google_container_registry_variables
   before_script:
