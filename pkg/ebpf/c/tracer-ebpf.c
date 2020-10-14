@@ -553,6 +553,40 @@ static __always_inline void handle_tcp_stats(conn_tuple_t* t, struct sock* sk) {
     update_tcp_stats(t, stats);
 }
 
+static __always_inline int is_http_payload(void* skb, size_t payload_offset, size_t payload_length) {
+    // Load the first 8 bytes of the payload
+    if (payload_length < 8) {
+		return 0; // Valid HTTP requests & responses must be > 8 bytes
+	}
+    char p[8];
+	int i = 0, j = 0;
+	for (i = payload_offset ; i < (payload_offset + 8) ; i++, j++) {
+		p[j] = load_byte(skb , i);
+	}
+
+    // HTTP messages always begin with a method token (https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html)
+    // HTTP responses always begin with 'HTTP/<version>' (https://www.w3.org/Protocols/rfc2616/rfc2616-sec6.html)
+    char valid_first_words[9][8] = {
+        "GET",
+        "HEAD",
+        "POST",
+        "PUT",
+        "DELETE",
+        "TRACE",
+        "CONNECT",
+        "OPTIONS",
+        "HTTP"
+    };
+
+    for (i = 0; i < 9; i++) {
+        if (strncmp (valid_first_words[i], p, strlen(valid_first_words[i])) == 0) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 SEC("kprobe/tcp_sendmsg")
 int kprobe__tcp_sendmsg(struct pt_regs* ctx) {
     struct sock* sk = (struct sock*)PT_REGS_PARM1(ctx);
@@ -1177,7 +1211,6 @@ int socket__dns_filter(struct __sk_buff* skb) {
     return -1;
 }
 
-
 // This function is meant to be used as a BPF_PROG_TYPE_SOCKET_FILTER.
 // When attached to a RAW_SOCKET, this code filters out everything but HTTP traffic.
 // All structs referenced here are kernel independent as they simply map protocol headers (Ethernet, IP and UDP).
@@ -1186,16 +1219,18 @@ int socket__http_filter(struct __sk_buff* skb) {
     __u16 l3_proto = load_half(skb, offsetof(struct ethhdr, h_proto));
     __u8 l4_proto;
     size_t ip_hdr_size;
-    size_t src_port_offset;
-    size_t dst_port_offset;
+    __u16 ip_payload_size;
+    size_t transport_hdr_size;
 
     switch (l3_proto) {
     case ETH_P_IP:
         ip_hdr_size = sizeof(struct iphdr);
+        ip_payload_size = load_byte(skb, ETH_HLEN + offsetof(struct iphdr, tot_len)) - ip_hdr_size;
         l4_proto = load_byte(skb, ETH_HLEN + offsetof(struct iphdr, protocol));
         break;
     case ETH_P_IPV6:
         ip_hdr_size = sizeof(struct ipv6hdr);
+        ip_payload_size = load_byte(skb, ETH_HLEN + offsetof(struct ipv6hdr, payload_len)) - ip_hdr_size;
         l4_proto = load_byte(skb, ETH_HLEN + offsetof(struct ipv6hdr, nexthdr));
         break;
     default:
@@ -1204,24 +1239,23 @@ int socket__http_filter(struct __sk_buff* skb) {
 
     switch (l4_proto) {
     case IPPROTO_UDP:
-        src_port_offset = offsetof(struct udphdr, source);
-        dst_port_offset = offsetof(struct udphdr, dest);
+        transport_hdr_size = sizeof(struct udphdr);
         break;
     case IPPROTO_TCP:
-        src_port_offset = offsetof(struct tcphdr, source);
-        dst_port_offset = offsetof(struct tcphdr, dest);
+        transport_hdr_size = sizeof(struct tcphdr);
         break;
     default:
         return 0;
     }
 
-    __u16 src_port = load_half(skb, ETH_HLEN + ip_hdr_size + src_port_offset);
-    __u16 dst_port = load_half(skb, ETH_HLEN + ip_hdr_size + dst_port_offset);
+    size_t payload_offset =  ETH_HLEN + ip_hdr_size + transport_hdr_size;
+    size_t payload_length = ip_payload_size - transport_hdr_size;
 
-    if (src_port == 80 || dst_port == 8 || src_port == 8080 || dst_port == 8080)
-        return -1;  // accept packet
+    if (!is_http_payload(skb, payload_offset, payload_length)) {
+        return 0;
+    }
 
-    return 0;
+	return -1;
 }
 
 
