@@ -4157,7 +4157,7 @@ revert_dockerhub_latest_7:
 
 revert_google_container_registry_latest_7:
   rules:
-    - <<: *if_master_branch
+    - <<: *if_not_master_branch
       when: manual
       allow_failure: true
   <<: *google_container_registry_tag_job_definition
