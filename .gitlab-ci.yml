@@ -4155,6 +4155,32 @@ revert_dockerhub_latest_7:
     - inv -e docker.publish --signed-pull --signed-push datadog/dogstatsd:${NEW_LATEST_RELEASE_7} datadog/dogstatsd:latest
     - inv -e docker.publish --signed-pull --signed-push datadog/dogstatsd:${NEW_LATEST_RELEASE_7} datadog/dogstatsd:7
 
+revert_google_container_registry_latest_7:
+  rules:
+    - <<: *if_master_branch
+      when: manual
+      allow_failure: true
+  <<: *google_container_registry_tag_job_definition
+  stage: maintenance_jobs
+  variables:
+    <<: *google_container_registry_variables
+    NEW_LATEST_RELEASE_7: ""  # tag name of the non-jmx version, for example "7.21.0"
+  script:
+    - if [[ -z "$NEW_LATEST_RELEASE_7" ]]; then echo "Need release version to revert to"; exit 1; fi
+    - inv -e docker.publish-manifest --name gcr.io/datadoghq/agent --tag latest
+      --image gcr.io/datadoghq/agent-amd64:${NEW_LATEST_RELEASE_7},linux/amd64
+      --image gcr.io/datadoghq/agent-arm64:${NEW_LATEST_RELEASE_7},linux/arm64
+    - inv -e docker.publish-manifest --name gcr.io/datadoghq/agent --tag latest-jmx
+      --image gcr.io/datadoghq/agent-amd64:${NEW_LATEST_RELEASE_7}-jmx,linux/amd64
+      --image gcr.io/datadoghq/agent-arm64:${NEW_LATEST_RELEASE_7}-jmx,linux/arm64
+    - inv -e docker.publish-manifest --name gcr.io/datadoghq/agent --tag 7
+      --image gcr.io/datadoghq/agent-amd64:${NEW_LATEST_RELEASE_7},linux/amd64
+      --image gcr.io/datadoghq/agent-arm64:${NEW_LATEST_RELEASE_7},linux/arm64
+    - inv -e docker.publish-manifest --name gcr.io/datadoghq/agent --tag 7-jmx
+      --image gcr.io/datadoghq/agent-amd64:${NEW_LATEST_RELEASE_7}-jmx,linux/amd64
+    - inv -e docker.publish gcr.io/datadoghq/dogstatsd:${NEW_LATEST_RELEASE_7} gcr.io/datadoghq/dogstatsd:latest
+    - inv -e docker.publish gcr.io/datadoghq/dogstatsd:${NEW_LATEST_RELEASE_7} gcr.io/datadoghq/dogstatsd:7
+
 #
 # Use this step to delete a tag of a given image
 # We call the Docker Hub API because docker cli doesn't support deleting tags
