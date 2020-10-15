@@ -7,7 +7,11 @@
 
 package probes
 
-import "github.com/DataDog/ebpf/manager"
+import (
+	"github.com/DataDog/ebpf/manager"
+
+	"github.com/DataDog/datadog-agent/pkg/security/secl/eval"
+)
 
 // SyscallMonitorSelectors is the list of probes that should be activated for the syscall monitor feature
 var SyscallMonitorSelectors = []manager.ProbesSelector{
@@ -15,7 +19,7 @@ var SyscallMonitorSelectors = []manager.ProbesSelector{
 }
 
 // SelectorsPerEventType is the list of probes that should be activated for each event
-var SelectorsPerEventType = map[string][]manager.ProbesSelector{
+var SelectorsPerEventType = map[eval.EventType][]manager.ProbesSelector{
 
 	// The following events will always be activated, regardless of the rules loaded
 	"*": {

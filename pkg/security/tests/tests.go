@@ -304,7 +304,7 @@ func newTestProbe(macrosDef []*rules.MacroDefinition, rulesDef []*rules.RuleDefi
 		return nil, err
 	}
 
-	_, err = rsa.GetPolicyReport(ruleSet, probe)
+	_, err = rsa.Apply(ruleSet, probe)
 	if err != nil {
 		return nil, err
 	}
