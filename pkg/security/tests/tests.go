@@ -351,7 +351,7 @@ func (tp *testProbe) Path(filename string) (string, unsafe.Pointer, error) {
 
 func (tp *testProbe) Close() {
 	tp.st.Close()
-	_ = tp.probe.Close()
+	tp.probe.Close()
 	time.Sleep(10 * time.Second)
 }
 
